@@ -53,15 +53,14 @@ module fpga_lcd
 		.o_txSerial(o_lcdTxSerial),
 		.o_serialEnable(o_lcdSerialEnable),
 		.o_txDone(w_lcdTxDone),
-		.o_rxDone(w_lcdRxDone)
+		.o_rxDone(w_lcdRxDone),
+		.o_rxData(w_lcdRxData)
 	);
 	
 	//UART TX related stuff
 	reg[7:0]		r_uartTxData = 0;
 	reg			r_uartTxDV = 0;
 	wire 			w_uartTxDone;
-	reg			r_started = 0;
-	reg[3:0]		r_byteCounter = 0;
 	
 	
 	//LCD Serial related stuff
@@ -72,7 +71,7 @@ module fpga_lcd
 	reg[7:0]		r_lcdTxData = 0;
 	wire			w_lcdTxDone;
 	reg			r_lcdRxBegin = 0;
-	reg[7:0]		r_lcdRxData = 0;
+	wire[7:0]	w_lcdRxData;
 	wire			w_lcdRxDone;
 	
 	//LCD related stuff
@@ -89,13 +88,21 @@ module fpga_lcd
 	parameter 	s_NORMAL = 3;
 	parameter 	s_SLEEP = 4;
 	parameter 	s_SHUTDOWN = 5;
+	parameter 	s_DEBUG = 6;
 	reg[3:0]		r_state = s_START;
 	
 	//General counter
 	reg[31:0]	r_clockCounter = 0;
 	
-	parameter[31:0] DATA_END = 1280 * 44; //1280 lines, each with 44 clocks
-	parameter[31:0] FRAME_END = DATA_END + 24; //Invert must be set in correct state for 24 clocks before updated is asserted (at start of next frame)
+	//Debug Stuff
+	reg[15:0]	r_debugState = 0;
+	
+	//Register addresses within the LCD
+	parameter 	HW_CONFIG_ADDRESS = 'h78;
+	
+	
+	parameter DATA_END = 1280 * 44; //1280 lines, each with 44 clocks
+	parameter FRAME_END = DATA_END + 24; //Invert must be set in correct state for 24 clocks before updated is asserted (at start of next frame)
 	
 assign o_lcdClock = r_clockEnable ? w_pllOutput : 0;
 
@@ -125,10 +132,13 @@ begin
 				r_clockCounter <= r_clockCounter + 1;
 			else
 			begin
-				//Serial Interface can now be used, get device ID to test communications
+				//Serial Interface can now be used, start DEBUG mode (for now)
+				r_clockCounter <= 0;
+				r_state <= s_DEBUG;
 				
 			end
 		end //case s_RESET
+		
 		s_NORMAL:
 		begin
 			r_clockEnable <= 1;
@@ -196,6 +206,133 @@ begin
 				end
 			end
 		end //case s_NORMAL
+		
+		s_DEBUG:
+		begin
+		data_out[3:0] <= r_debugState;
+			case(r_debugState)
+				0:
+				begin
+					r_uartTxData <= 68; //D
+					r_uartTxDV <= 1;
+					r_debugState <= 1;
+				end
+				1:
+				begin
+					r_uartTxDV <= 0;
+					if(w_uartTxDone == 1)
+					 r_debugState <= 2;
+				end
+				2:
+				begin
+					r_uartTxData <= 73; //I
+					r_uartTxDV <= 1;
+					r_debugState <= 3;
+				end
+				3:
+				begin
+					r_uartTxDV <= 0;
+					if(w_uartTxDone == 1)
+					 r_debugState <= 4;
+				end
+				4:
+				begin
+					r_uartTxData <= 68; //D
+					r_uartTxDV <= 1;
+					r_debugState <= 5;
+				end
+				5:
+				begin
+					r_uartTxDV <= 0;
+					if(w_uartTxDone == 1)
+					 r_debugState <= 6;
+				end
+				6:
+				begin
+					r_uartTxData <= 58; //:
+					r_uartTxDV <= 1;
+					r_debugState <= 7;
+				end
+				7:
+				begin
+					r_uartTxDV <= 0;
+					if(w_uartTxDone == 1)
+					 r_debugState <= 8;
+				end
+				8:
+				begin 
+					r_lcdAddress <= HW_CONFIG_ADDRESS;
+					r_lcdRxBegin <= 1;
+					r_debugState <= 9;
+				end
+				9:
+				begin
+					r_lcdRxBegin <= 0;
+					if(w_lcdRxDone == 1)
+						r_debugState <= 10;
+				end
+				10:
+				begin
+					r_uartTxData <= (w_lcdRxData[7:4]) + 48; //MS Byte in Hex
+					r_uartTxDV <= 1;
+					r_debugState <= 11;
+				end
+				11:
+				begin
+					r_uartTxDV <= 0;
+					if(w_uartTxDone == 1)
+						r_debugState <= 12;
+				end
+				12:
+				begin
+					r_uartTxDV <= 1;
+					r_debugState <= 13;
+					if(w_lcdRxData[3:0] < 10)
+						r_uartTxData <= w_lcdRxData[3:0] + 48; //Use number
+					else
+						r_uartTxData <= w_lcdRxData[3:0] + 55; //Letter
+				end
+				13:
+				begin
+					r_uartTxDV <= 0;
+					if(w_uartTxDone == 1)
+					 r_debugState <= 14;
+				end
+				14:
+				begin
+					r_uartTxData <= 10; //Newline
+					r_uartTxDV <= 1;
+					r_debugState <= 15;
+				end
+				15:
+				begin
+					r_uartTxDV <= 0;
+					if(w_uartTxDone == 1)
+					begin
+						r_debugState <= 16;
+						r_clockCounter <= 0;
+					end
+				end
+				16:
+				begin
+					if(w_lcdRxData == 'h20)
+					begin
+						r_debugState <= 0;
+						r_state <= s_NORMAL;
+					end
+					else 
+					begin
+						if(r_clockCounter < 1000000)
+							r_clockCounter <= r_clockCounter + 1;
+						else
+						begin
+								r_clockCounter <= 0;
+								r_debugState <= 0;
+						end
+					end
+				end
+			endcase
+		end //case s_DEBUG
 	endcase
 
 end //of main loop	
