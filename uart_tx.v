@@ -1,7 +1,7 @@
 module uart_tx
 (
 	input				i_clock,
-	input 			i_txDV,
+	input 			i_txBegin,
 	input[7:0]		i_txData,
 	output reg		o_txBusy,
 	output reg		o_txSerial,
@@ -33,7 +33,7 @@ begin
 			r_clockCounter <= 0;
 			o_txDone <= 0;
 			o_txSerial <= 1;
-			if(i_txDV == 1) //we have valid data to start sending
+			if(i_txBegin == 1) //we have valid data to start sending
 			begin
 				o_txBusy <= 1;
 				r_state <= s_STARTBIT;
