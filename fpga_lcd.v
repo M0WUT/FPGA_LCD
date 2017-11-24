@@ -218,110 +218,35 @@ begin
 			case(r_debugState)
 				0:
 				begin
-					r_uartTxData <= 68; //D
-					r_uartTxBegin <= 1;
+					r_lcdAddress <= HW_CONFIG_ADDRESS;
+					r_lcdRxBegin <= 1;
 					r_debugState <= 1;
 				end
 				1:
 				begin
-					r_uartTxBegin <= 0;
-					if(w_uartTxDone == 1)
-					 r_debugState <= 2;
+					r_lcdRxBegin <= 0;
+					if(w_lcdRxDone == 1)
+						r_debugState <= 2;
 				end
 				2:
 				begin
-					r_uartTxData <= 73; //I
 					r_uartTxBegin <= 1;
 					r_debugState <= 3;
+					r_uartTxData <= {"DID:", w_lcdRxData[7:4]+(w_lcdRxData[7:4] < 10 ? 8'c0 : 8'cA), w_lcdRxData[3:0]+(w_lcdRxData[3:0] < 10 ? 8'c0 : 8'cA) , "\n"};
+					r_uartTxDataLength <= 7;
 				end
+					
 				3:
 				begin
 					r_uartTxBegin <= 0;
 					if(w_uartTxDone == 1)
-					 r_debugState <= 4;
-				end
-				4:
-				begin
-					r_uartTxData <= 68; //D
-					r_uartTxBegin <= 1;
-					r_debugState <= 5;
-				end
-				5:
-				begin
-					r_uartTxBegin <= 0;
-					if(w_uartTxDone == 1)
-					 r_debugState <= 6;
-				end
-				6:
-				begin
-					r_uartTxData <= 58; //:
-					r_uartTxBegin <= 1;
-					r_debugState <= 7;
-				end
-				7:
-				begin
-					r_uartTxBegin <= 0;
-					if(w_uartTxDone == 1)
-					 r_debugState <= 8;
-				end
-				8:
-				begin 
-					r_lcdAddress <= HW_CONFIG_ADDRESS;
-					r_lcdRxBegin <= 1;
-					r_debugState <= 9;
-				end
-				9:
-				begin
-					r_lcdRxBegin <= 0;
-					if(w_lcdRxDone == 1)
-						r_debugState <= 10;
-				end
-				10:
-				begin
-					r_uartTxBegin <= 1;
-					r_debugState <= 11;
-					if(w_lcdRxData[7:4] < 10)
-						r_uartTxData <= w_lcdRxData[7:4] + 48; //Use number
-					else
-						r_uartTxData <= w_lcdRxData[7:4] + 55; //Letter
-				end
-				11:
-				begin
-					r_uartTxBegin <= 0;
-					if(w_uartTxDone == 1)
-						r_debugState <= 12;
-				end
-				12:
-				begin
-					r_uartTxBegin <= 1;
-					r_debugState <= 13;
-					if(w_lcdRxData[3:0] < 10)
-						r_uartTxData <= w_lcdRxData[3:0] + 48; //Use number
-					else
-						r_uartTxData <= w_lcdRxData[3:0] + 55; //Letter
-				end
-				13:
-				begin
-					r_uartTxBegin <= 0;
-					if(w_uartTxDone == 1)
-					 r_debugState <= 14;
-				end
-				14:
-				begin
-					r_uartTxData <= 10; //Newline
-					r_uartTxBegin <= 1;
-					r_debugState <= 15;
-				end
-				15:
-				begin
-					r_uartTxBegin <= 0;
-					if(w_uartTxDone == 1)
 					begin
-						r_debugState <= 16;
+						r_debugState <= 4;
 						r_clockCounter <= 0;
 					end
 				end
-				16:
+				
+				4:
 				begin
 					if(w_lcdRxData == 'h20) //If data is correct, start running
 					begin

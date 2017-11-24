@@ -32,6 +32,7 @@ begin
 			r_bitCounter <= 0;
 			r_clockCounter <= 0;
 			o_txDone <= 0;
+			o_txBusy <= 0;
 			o_txSerial <= 1;
 			if(i_txBegin == 1) //we have valid data to start sending
 			begin

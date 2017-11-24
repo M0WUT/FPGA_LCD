@@ -36,15 +36,14 @@ begin
 	
 	s_IDLE:
 	begin
+		r_txBegin <= 0;
 		o_txBusy <= 0;
 		o_txDone <= 0;
 		if(i_txBegin == 1)
 		begin
-			r_txData <= i_txData;
-			r_byteCounter <= i_txDataLength;
-			r_uartTxData <= i_txData[7:0];
+			r_txData <= i_txData; //Store local copy of the data
+			r_byteCounter <= i_txDataLength; 
 			o_txBusy <= 1;
-			r_txBegin <= 1;
 			r_state <= s_SENDING;
 		end	
 		else
@@ -54,17 +53,26 @@ begin
 	s_SENDING:
 	begin
 		r_txBegin <= 0;
-		if(w_txDone == 1)
-		begin
-			//We have sent all the data
-			r_state <= s_DONE;
-		end
-		else
+		if(w_txBusy == 1 || r_txBegin == 1) 
+		//^This weirdness needed as w_txBusy is low for 2 cycles, 1 in s_IDLE, 1 in s_SENDING so was sending every other byte
 			r_state <= s_SENDING;
+		else
+		begin
+			if(r_byteCounter == 0)
+				r_state <= s_DONE;
+			else
+			begin
+				//Send next byte
+				r_uartTxData <= r_txData[(r_byteCounter << 3) - 1 -: 8];
+				r_txBegin <= 1;
+				r_byteCounter <= r_byteCounter - 1;
+			end
+		end
 	end// case s_SENDING
 	
 	s_DONE:
 	begin
+		r_txBegin <= 0;
 		o_txDone <= 1;
 		r_state <= s_IDLE;
 	end //case s_DONE
