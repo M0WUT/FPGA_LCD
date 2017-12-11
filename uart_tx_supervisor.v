@@ -2,7 +2,7 @@ module uart_tx_supervisor
 (
 	input				i_clock,
 	input 			i_txBegin,
-	input[87:0]		i_txData,
+	input[111:0]	i_txData,
 	input[7:0]		i_txDataLength,
 	output reg		o_txBusy,
 	output			o_txSerial,
@@ -19,7 +19,7 @@ uart_tx UART_TX_INSTANCE
 	.o_txDone(w_txDone)
 );
 
-reg[87:0]		r_txData = 0;
+reg[111:0]		r_txData = 0;
 reg				r_txBegin = 0;
 reg[7:0]			r_byteCounter = 0;
 reg[7:0]			r_uartTxData = 0;

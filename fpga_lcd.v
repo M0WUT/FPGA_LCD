@@ -54,12 +54,13 @@ module fpga_lcd
 		.o_txSerial(o_lcdTxSerial),
 		.o_serialEnable(o_lcdSerialEnable),
 		.o_txDone(w_lcdTxDone),
+		.o_rxBusy(w_lcdRxBusy),
 		.o_rxDone(w_lcdRxDone),
 		.o_rxData(w_lcdRxData)
 	);
 	
 	//UART TX related stuff
-	reg[87:0]	r_uartTxData = 0;
+	reg[111:0]	r_uartTxData = 0;
 	reg[7:0]		r_uartTxDataLength = 1;
 	reg			r_uartTxBegin = 0;
 	wire 			w_uartTxDone;
@@ -76,6 +77,7 @@ module fpga_lcd
 	reg			r_lcdRxBegin = 0;
 	wire[7:0]	w_lcdRxData;
 	wire			w_lcdRxDone;
+	wire			w_lcdRxBusy;
 	
 	//LCD related stuff
 	reg inverted_frame; //Must send frame then inverse to maintain DC balance, 1 if sending inverted frame
@@ -90,14 +92,31 @@ module fpga_lcd
 	parameter 	s_NORMAL = 3;
 	parameter 	s_SLEEP = 4;
 	parameter 	s_SHUTDOWN = 5;
-	parameter 	s_DEBUG = 6;
+	parameter 	s_SETUP = 6;
 	reg[3:0]		r_state = s_START;
 	
 	//General counter
 	reg[31:0]	r_clockCounter = 0;
 	
-	//Debug Stuff
-	reg[15:0]	r_debugState = 0;
+	//Setup Stuff
+	reg[15:0]	r_setupState = 0;
+	reg[23:0]	r_deviceID = 0;
+	reg[1:0]		r_IDByteCounter = 0;
+	
+	parameter 	s_SETUP_START = 0;
+	parameter 	s_SETUP_CONFIG_REQUEST = 1;
+	parameter 	s_SETUP_CONFIG_RECEIVED = 2;
+	parameter 	s_SETUP_CONFIG_UART_WAITING = 3;
+	parameter 	s_DETECTION_FAILED = 4;
+	parameter 	s_SETUP_ID_REQUEST = 5;
+	parameter 	s_SETUP_ID_RECEIVED = 6;
+	parameter 	s_SETUP_ID_UART_WAITING = 7;
+	
+	
+	
+	
+	
+	//Debug stuff
 	reg[22:0]  	led_counter = 0;
 	
 	//Register addresses within the LCD
@@ -140,7 +159,7 @@ begin
 			begin
 				//Serial Interface can now be used, start DEBUG mode (for now)
 				r_clockCounter <= 0;
-				r_state <= s_DEBUG;
+				r_state <= s_SETUP;
 				
 			end
 		end //case s_RESET
@@ -213,52 +232,105 @@ begin
 			end
 		end //case s_NORMAL
 		
-		s_DEBUG:
+		s_SETUP:
 		begin
 
-			case(r_debugState)
-				0:
+			case(r_setupState)
+				s_SETUP_START:
 				begin
 					r_lcdAddress <= HW_CONFIG_ADDRESS;
 					r_lcdRxBegin <= 1;
-					r_debugState <= 1;
-				end
-				1:
+					r_setupState <= 1;
+				end //case s_SETUP_START
+				
+				s_SETUP_CONFIG_REQUEST:
 				begin
 					r_lcdRxBegin <= 0;
 					if(w_lcdRxDone == 1)
-						r_debugState <= 2;
-				end
-				2:
+						r_setupState <= 2;
+				end //case s_SETUP_CONFIG_REQUEST
+				
+				s_SETUP_CONFIG_RECEIVED:
 				begin
 					r_uartTxBegin <= 1;
-					r_debugState <= 3;
-					r_uartTxData <= {"DID:", w_lcdRxData[7:4]+(w_lcdRxData[7:4] < 10 ? 8'd48 : 8'd55), w_lcdRxData[3:0]+(w_lcdRxData[3:0] < 10 ? 8'd48 : 8'd55) , "\r\n"};
-					r_uartTxDataLength <= 8;
-				end
+					if(w_lcdRxData == 'h20) //From datasheet, p31, 0x20 is HDP-1280-2 Rev A
+					begin
+						r_uartTxData <= {8'd12,"Detected\r\n"}; // 12 Decimal causes page break in PuTTY, not sure about anything else
+						r_uartTxDataLength <= 11;
+						r_setupState <= s_SETUP_CONFIG_UART_WAITING;
+					end
+					else
+					begin
+						r_uartTxData <= {8'd12,"Failed\r\n"};
+						r_uartTxDataLength <= 9;
+						r_setupState <= s_DETECTION_FAILED;
+					end
+				end //case s_SETUP_CONFIG_RECEIVED
 					
-				3:
+				s_SETUP_CONFIG_UART_WAITING:
 				begin
 					r_uartTxBegin <= 0;
 					if(w_uartTxDone == 1)
-					begin
-						r_debugState <= 4;
-						r_clockCounter <= 0;
-					end
-				end
+						r_setupState <= s_SETUP_ID_REQUEST;
+						r_IDByteCounter <= 0;
+					
+				end //case s_SETUP_UART_WAITING
 				
-				4:
+				s_DETECTION_FAILED:
 				begin
 					if(r_clockCounter < 1000000) // Else, wait 1s (at 1MHz) and ask again
 						r_clockCounter <= r_clockCounter + 1;
 					else
 					begin
 							r_clockCounter <= 0;
-							r_debugState <= 0;
+							r_setupState <= s_SETUP_START;
 					end
-				end
-			endcase//debug case
-		end //case s_DEBUG
+				end //case s_DETECTION_FAILED
+				
+				s_SETUP_ID_REQUEST:
+				begin
+					r_lcdRxBegin <= 0;
+					if(r_IDByteCounter == 3)
+						r_setupState <= s_SETUP_ID_RECEIVED;
+					else
+					begin
+						if(w_lcdRxDone == 1) //If we have recieved data
+						begin
+							r_deviceID[(r_IDByteCounter * 8) +: 8] <= w_lcdRxData[7:0];
+							r_IDByteCounter <= r_IDByteCounter + 1;
+						end
+						else if(w_lcdRxBusy == 0) //Haven't got all of our data but tcvr is not busy
+						begin
+							r_lcdAddress <= HW_ID_ADDRESS_BASE + r_IDByteCounter;
+							r_lcdRxBegin <= 1;
+						end
+						else
+							r_setupState <= s_SETUP_ID_REQUEST;
+					end
+				end//case s_SETUP_ID_REQUEST
+				
+				s_SETUP_ID_RECEIVED:
+				begin
+					r_uartTxData <= 	{"ID: ",
+											r_deviceID[23:20]+(r_deviceID[23:20] < 10 ? 8'd48 : 8'd55),
+											r_deviceID[19:16]+(r_deviceID[19:16] < 10 ? 8'd48 : 8'd55),
+											r_deviceID[15:12]+(r_deviceID[15:12] < 10 ? 8'd48 : 8'd55),
+											r_deviceID[11:8]+(r_deviceID[11:8] < 10 ? 8'd48 : 8'd55),
+											r_deviceID[7:4]+(r_deviceID[7:4] < 10 ? 8'd48 : 8'd55),
+											r_deviceID[3:0]+(r_deviceID[3:0] < 10 ? 8'd48 : 8'd55),
+											"\r\n"};
+					r_uartTxBegin <= 1;
+					r_uartTxDataLength <= 12;
+					r_setupState <= s_SETUP_ID_UART_WAITING;
+				end //case s_SETUP_ID_RECEIVED
+				
+				s_SETUP_ID_UART_WAITING:
+				begin
+					r_uartTxBegin <= 0;
+				end //case s_SETUP_ID_UART_WAITING
+				
+			endcase//case with s_SETUP
+		end //case s_SETUP
 	endcase//Case for whole program
 			
 

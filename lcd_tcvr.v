@@ -208,7 +208,9 @@ end
 
 always @ (posedge r_serialClock)
 begin
-	
+	//I'm aware this is a bit convoluted, I was having issues with reading 
+	//due to other stuff and changed this in the process of debugging
+	//It does however work!
 	if(r_state != s_IDLE)
 	begin
 		//We are doing receiver things
