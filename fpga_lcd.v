@@ -18,7 +18,7 @@ module fpga_lcd
 	 output				o_lcdSerialEnable,
 	 
 	 //Debug stuff
-	 output reg[7:0]	led, //Onboard 8 LEDs
+	 output reg[5:0]	led, //6 LEDS on breakout board
 	 output				o_uartTxSerial
 
 	 
@@ -49,7 +49,7 @@ module fpga_lcd
 		.i_rxBegin(r_lcdRxBegin),
 		.i_address(r_lcdAddress),
 		.i_txData(r_lcdTxData),
-		.i_rxSerial(r_lcdRxSerial),
+		.i_rxSerial(i_lcdRxSerial),
 		.o_clock(o_lcdSerialClock),
 		.o_txSerial(o_lcdTxSerial),
 		.o_serialEnable(o_lcdSerialEnable),
@@ -79,7 +79,6 @@ module fpga_lcd
 	
 	//LCD related stuff
 	reg inverted_frame; //Must send frame then inverse to maintain DC balance, 1 if sending inverted frame
-	reg[24:0] led_counter = 0;
 	reg[16:0] line_counter = 0;
 	reg[31:0] frame_pixel_counter=0;
 	reg[31:0] line_pixel_counter = 0;
@@ -99,9 +98,11 @@ module fpga_lcd
 	
 	//Debug Stuff
 	reg[15:0]	r_debugState = 0;
+	reg[22:0]  	led_counter = 0;
 	
 	//Register addresses within the LCD
 	parameter 	HW_CONFIG_ADDRESS = 'h78;
+	parameter	HW_ID_ADDRESS_BASE = 'h79;
 	
 	
 	parameter DATA_END = 1280 * 44; //1280 lines, each with 44 clocks
@@ -232,8 +233,8 @@ begin
 				begin
 					r_uartTxBegin <= 1;
 					r_debugState <= 3;
-					r_uartTxData <= {"DID:", w_lcdRxData[7:4]+(w_lcdRxData[7:4] < 10 ? 8'c0 : 8'cA), w_lcdRxData[3:0]+(w_lcdRxData[3:0] < 10 ? 8'c0 : 8'cA) , "\n"};
-					r_uartTxDataLength <= 7;
+					r_uartTxData <= {"DID:", w_lcdRxData[7:4]+(w_lcdRxData[7:4] < 10 ? 8'd48 : 8'd55), w_lcdRxData[3:0]+(w_lcdRxData[3:0] < 10 ? 8'd48 : 8'd55) , "\r\n"};
+					r_uartTxDataLength <= 8;
 				end
 					
 				3:
@@ -248,20 +249,12 @@ begin
 				
 				4:
 				begin
-					if(w_lcdRxData == 'h20) //If data is correct, start running
+					if(r_clockCounter < 1000000) // Else, wait 1s (at 1MHz) and ask again
+						r_clockCounter <= r_clockCounter + 1;
+					else
 					begin
-						r_debugState <= 0;
-						r_state <= s_NORMAL;
-					end
-					else 
-					begin
-						if(r_clockCounter < 1000000) // Else, wait 1s (at 1MHz) and ask again
-							r_clockCounter <= r_clockCounter + 1;
-						else
-						begin
-								r_clockCounter <= 0;
-								r_debugState <= 0;
-						end
+							r_clockCounter <= 0;
+							r_debugState <= 0;
 					end
 				end
 			endcase//debug case
@@ -275,7 +268,8 @@ end //of main loop
 always @ (negedge w_pllOutput)
 begin
 	led_counter <= led_counter + 1;
-	led[7:0] <= led_counter[24:17]; //Just used to indicate program is running
+	led[5:0] <= led_counter[22:17]; //Just used to indicate program is running
+
 end
 	
 endmodule

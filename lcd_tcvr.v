@@ -29,6 +29,7 @@ parameter 	s_RXSTARTBIT = 6;
 parameter 	s_RXADDRESS = 7;
 parameter	s_RXDATA = 8;
 parameter	s_RXCLEANUP = 9;
+parameter 	s_RXWAIT = 10; 
 
 reg[3:0]		r_bitCounter = 0; //which bit we're currently sending
 reg[7:0]		r_address = 0; //save address to local copy in case the master changes during an operation
@@ -43,6 +44,7 @@ reg			r_rxBegin = 0;
 reg			r_doneDisable = 0;
 reg			r_txDone = 0;
 reg			r_rxDone = 0;
+reg[7:0]		r_rxBitCounter = 0;
 
 assign o_clock = (r_clockEnable == 1) ? r_serialClock : 0;
 assign o_txDone = (r_doneDisable == 1) ? r_txDone : 0;
@@ -154,6 +156,7 @@ begin
 		
 		s_TXCLEANUP:
 		begin
+			o_txSerial <= 0;
 			r_txDone <= 1;
 			o_serialEnable <= 1;
 			r_clockEnable <= 0;
@@ -174,13 +177,17 @@ begin
 			r_bitCounter <= r_bitCounter - 1;
 			if(r_bitCounter == 0)
 			begin
-				r_bitCounter <= 7; //8 Data bits
 				r_state <= s_RXDATA;
+				r_bitCounter <= 7;
+
+				//r_rxData <= 0; //Clear RX Buffer
 			end
 		end //case s_RXADDRESS
 		
+	
 		s_RXDATA:
 		begin
+			o_txSerial <= 0;
 			r_bitCounter <= r_bitCounter - 1;
 			if(r_bitCounter == 0)
 				r_state <= s_RXCLEANUP;
@@ -201,8 +208,20 @@ end
 
 always @ (posedge r_serialClock)
 begin
-	if(r_state == s_RXDATA)
-		r_rxData[r_bitCounter] <= i_rxSerial;
+	
+	if(r_state != s_IDLE)
+	begin
+		//We are doing receiver things
+		r_rxBitCounter <= r_rxBitCounter + 1;
+		if(r_rxBitCounter > 7)
+		begin
+			//We are now listening to data
+			r_rxData[16-r_rxBitCounter] <= i_rxSerial;
+		end
+		
+	end
+	if(r_state == s_RXSTARTBIT)
+		r_rxBitCounter <= 1;
 end
 
 
