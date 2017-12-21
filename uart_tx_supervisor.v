@@ -9,7 +9,7 @@ module uart_tx_supervisor
 	output reg		o_txDone
 );
 
-uart_tx UART_TX_INSTANCE
+uart_tx #(.CLOCK_SPEED(CLOCK_SPEED), .BAUD_RATE(BAUD_RATE)) UART_TX_INSTANCE
 (
 	.i_clock(i_clock),
 	.i_txBegin(r_txBegin),
@@ -19,10 +19,16 @@ uart_tx UART_TX_INSTANCE
 	.o_txDone(w_txDone)
 );
 
+parameter 		CLOCK_SPEED = 1000000;
+parameter		BAUD_RATE = 9600;
+
 reg[111:0]		r_txData = 0;
 reg				r_txBegin = 0;
 reg[7:0]			r_byteCounter = 0;
 reg[7:0]			r_uartTxData = 0;
+
+wire				w_txBusy;
+wire				w_txDone;
 
 //State machine stuff
 parameter		s_IDLE = 0;

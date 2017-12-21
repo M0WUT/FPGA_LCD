@@ -16,7 +16,11 @@ module lcd_tcvr
 	output 			o_rxDone
 );
 
-parameter CLOCKS_PER_BIT = 1; //i_clock frequency / 4*serial_clock_frequency (max 2MHz)
+parameter 	CLOCK_SPEED = 1000000;
+//Clock frequency is i_clock frequency / 4*serial_clock_frequency (max 2MHz) 
+//The use of the TEMP means it sets to 1MHz if possible, else go as fast as you can
+parameter	CLOCKS_PER_BIT_TEMP = CLOCK_SPEED / 4000000;
+parameter 	CLOCKS_PER_BIT = (CLOCKS_PER_BIT_TEMP > 0) ? CLOCKS_PER_BIT_TEMP : 1; 
 
 //states for the state machine (who needs enums?)
 parameter 	s_IDLE = 0;
@@ -46,9 +50,9 @@ reg			r_txDone = 0;
 reg			r_rxDone = 0;
 reg[7:0]		r_rxBitCounter = 0;
 
-assign o_clock = (r_clockEnable == 1) ? r_serialClock : 0;
-assign o_txDone = (r_doneDisable == 1) ? r_txDone : 0;
-assign o_rxDone = (r_doneDisable == 1) ? r_rxDone : 0;
+assign o_clock = r_clockEnable && r_serialClock;
+assign o_txDone = r_doneDisable ? 0 : r_txDone; 
+assign o_rxDone = r_doneDisable ? 0 : r_rxDone;
 
 always @ (posedge i_clock)
 begin
@@ -58,7 +62,7 @@ begin
 	else
 	begin
 		r_clockCounter <= 0;
-		r_serialClock <= ~ r_serialClock;
+		r_serialClock <= ~r_serialClock;
 	end
 	
 	//pass begin signals through to slower clock domain
@@ -82,10 +86,6 @@ begin
 		end
 	end	
 	
-	//Pass done bits back to fast clock domain once complete
-	else if(r_state == s_TXCLEANUP || r_state == s_RXCLEANUP)
-		r_doneDisable <= 1;
-		
 	//Clear Start bits once running
 	else
 	begin
@@ -93,8 +93,10 @@ begin
 		r_rxBegin <= 0;
 	end
 	
+	//Pass done bits back to fast clock domain once complete
+	r_doneDisable <= (r_rxDone || r_txDone);
+	
 end
-
 
 always @ (negedge r_serialClock)
 begin
@@ -116,7 +118,8 @@ begin
 				r_txData <= i_txData;
 				r_state <= s_TXSTARTBIT;
 			end
-			if(r_rxBegin == 1)
+			
+			else if(r_rxBegin == 1)
 			begin
 				//Request a byte
 				o_serialEnable <= 0;

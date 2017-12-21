@@ -8,8 +8,9 @@ module uart_tx
 	output reg		o_txDone
 );
 
-
-parameter CLOCKS_PER_BIT = 104; //i_clock frequency / baudrate. Currently for 8MHz clock and 9600 buad
+parameter 	CLOCK_SPEED = 1000000;
+parameter 	BAUD_RATE = 9600;
+parameter 	CLOCKS_PER_BIT = CLOCK_SPEED / BAUD_RATE; 
 
 //states for the state machine
 parameter 	s_IDLE = 0;
