@@ -147,6 +147,7 @@ module FPGA_LCD
 	
 	//Debug stuff
 	reg[31:0]  	led_counter = 0;
+	reg[7:0]		r_letterCounter = 0;
 	
 	//Register addresses within the LCD
 	parameter 	HW_CONFIG_ADDRESS = 'h78; //Contains version number, only version 0x20 was released
@@ -553,10 +554,59 @@ begin
 						///////////////////////////////////////////
 						//This bit is where valid data is written//
 						///////////////////////////////////////////
-						if((line_counter < 320) || line_counter > 960)
-							data_out[31:0] = 31'hFFFFFFFF; //Replace this bit with valid data
+						case(r_letterCounter)
+						0:
+						begin
+							if((line_pixel_counter < 10) || line_pixel_counter > 30 || (line_counter > 480 && line_counter < 800))
+								data_out[31:0] = 32'hFFFFFFFF; //Replace this bit with valid data
+							else
+								data_out[31:0] = 32'h0;
+						end
+						
+						1:
+						begin
+							if((line_counter < 160) || (line_counter > 1120) || (line_pixel_counter < 10) || (line_counter > 480 && line_counter < 800))
+								data_out[31:0] = 32'hFFFFFFFF; //Replace this bit with valid data
+							else
+								data_out[31:0] = 32'h0;
+						end
+						
+						2:
+						begin
+							if((line_counter > 960) || (line_pixel_counter < 10))
+								data_out[31:0] = 32'hFFFFFFFF; //Replace this bit with valid data
+							else
+								data_out[31:0] = 32'h0;
+						end
+						
+						3:
+						begin
+							if((line_counter > 960) || (line_pixel_counter < 10))
+								data_out[31:0] = 32'hFFFFFFFF; //Replace this bit with valid data
+							else
+								data_out[31:0] = 32'h0;
+						end
+						
+						4:
+						begin
+							if((line_counter < 320) || (line_counter > 960) || (line_pixel_counter < 10) || (line_pixel_counter > 30))
+								data_out[31:0] = 32'hFFFFFFFF; //Replace this bit with valid data
+							else
+								data_out[31:0] = 32'h0;
+						end
+						endcase
+						
+						if(r_clockCounter > CLOCK_SPEED)
+						begin
+							r_clockCounter <= 0;
+							if(r_letterCounter >= 4)
+								r_letterCounter <= 0;
+							else
+								r_letterCounter <= (r_letterCounter + 1);
+						end
 						else
-							data_out[31:0] = 31'h0;
+							r_clockCounter <= r_clockCounter + 1;
+							
 						
 					end
 				end
