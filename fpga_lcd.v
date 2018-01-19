@@ -1,4 +1,4 @@
-module fpga_lcd
+module FPGA_LCD
 (
 	 input 				clock_50, //Input from onboard crystal
 	 
@@ -35,7 +35,7 @@ module fpga_lcd
 		.c0(w_pllOutput)
 	);
 	
-	parameter 	CLOCK_SPEED = 30000000; //MUST be integer number of MHz, used to report new clock speed to transceiver modules
+	parameter 	CLOCK_SPEED = 25000000; //MUST be integer number of MHz, used to report new clock speed to transceiver modules
 	
 	parameter CLOCK_MHZ = CLOCK_SPEED/1000000; //Done as parameters so evaluated at compile time, does mean a bit ugly as need initialising in 1 line!
 	parameter CLOCK_STRING = (CLOCK_MHZ > 100 ? 49 : 0)  << 16 | (((CLOCK_MHZ / 10) % 10) + 24'd48) << 8 | ((CLOCK_MHZ % 10) + 24'd48);
@@ -98,6 +98,7 @@ module fpga_lcd
 	reg[16:0] 	line_counter = 0;
 	reg[31:0] 	frame_pixel_counter=0;
 	reg[31:0] 	line_pixel_counter = 0;
+	reg 			first = 1; //Used to prevent update pulse at start of first frame
 	
 	//State machine related stuff
 	parameter   s_START = 0;
@@ -161,7 +162,7 @@ module fpga_lcd
 	parameter FRAME_END = DATA_END + 24; //Invert must be set in correct state for 24 clocks before updated is asserted (at start of next frame)
 	
 assign o_lcdClock = r_clockEnable ? w_pllOutput : 0;
-assign sync = 1;
+assign sync = 0;
 
 
 always @ (negedge w_pllOutput) //main LCD writing routine
@@ -529,10 +530,10 @@ begin
 			r_lcdRxBegin <= 0;
 			r_clockEnable <= 1;
 			frame_pixel_counter <= frame_pixel_counter + 1;	
-			update <= (frame_pixel_counter < 48); //update must be high for first 48 clock pulses
+			update <= (first == 0) && (frame_pixel_counter < 48); //update must be high for first 48 clock pulses
 			
-			invert <= (((frame_pixel_counter >= DATA_END) && inverted_frame) || ((frame_pixel_counter < 72) && ~inverted_frame));
-			
+			//invert <= (first == 0) && (((frame_pixel_counter >= DATA_END) && inverted_frame) || ((frame_pixel_counter < 72) && ~inverted_frame));
+			invert<=0; //DEEBUG
 
 			if (frame_pixel_counter < DATA_END)
 			begin
@@ -552,8 +553,10 @@ begin
 						///////////////////////////////////////////
 						//This bit is where valid data is written//
 						///////////////////////////////////////////
-									
-						data_out[31:0] = 31'hCCCC; //Replace this bit with valid data
+						if((line_counter < 320) || line_counter > 960)
+							data_out[31:0] = 31'hFFFFFFFF; //Replace this bit with valid data
+						else
+							data_out[31:0] = 31'h0;
 						
 					end
 				end
@@ -573,13 +576,14 @@ begin
 			else //We are in the back porch, send 24 clocks
 			begin
 				valid <= 0;
+				first <= 0;
 				data_out[31:0] <= 0;
 				if(frame_pixel_counter == FRAME_END - 1) //minus 1 because of parallel magic
 				begin
 					frame_pixel_counter <= 0;
 					line_pixel_counter <= 0;
 					line_counter <= 0;
-					inverted_frame <= ~inverted_frame;
+					//inverted_frame <= ~inverted_frame; //DEBUG
 				end
 			end
 			
@@ -592,6 +596,7 @@ begin
 				r_state <= s_TRANSISTION_NORMAL_SLEEP;
 			end
 				
+			/* //This section reads temperature continually, not sure what use it is but threw it in anyway
 			if(w_uartTxBusy == 0 && w_lcdRxBusy == 0)
 			begin
 				r_lcdAddress <= HDP_TEMPERATURE_ADDRESS; 
@@ -604,12 +609,14 @@ begin
 				r_uartTxData[39:0] <= {((w_lcdRxData[7:0] / 100) + 8'd48) << 16 | (((w_lcdRxData[7:0] / 10) % 10) + 8'd48) << 8 | (w_lcdRxData[7:0] % 10) + 8'd48 ,"\r\n"};
 				r_uartTxDataLength <= 5;
 			end
+			*/
 				
 		end //case s_NORMAL
 		
 		s_TRANSISTION_NORMAL_SLEEP:
 		begin
-
+		
+			r_lcdTxBegin <= 0;
 			//Wait until transistion complete before going to sleep
 			if(w_lcdTxDone == 1)
 				r_state <= s_SLEEP;
@@ -626,7 +633,7 @@ begin
 				r_clockCounter <= r_clockCounter + 1;
 			else
 			begin
-				//Serial Interface can now be used, start SETUP mode 
+				//All done
 				r_clockCounter <= 0;
 				r_state <= s_SHUTDOWN;
 			end
