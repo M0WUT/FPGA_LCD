@@ -90,7 +90,7 @@ begin
 		s_STOPBIT:
 		begin
 			o_txSerial <= 1; //Stop bit for UART is a 1
-			if(r_clockCounter < CLOCKS_PER_BIT)
+			if(r_clockCounter < 3 * CLOCKS_PER_BIT) //3 times as logic analyser sometimes has issue with only 1
 			begin
 				r_state <= s_STOPBIT;
 				r_clockCounter <= r_clockCounter + 1;
