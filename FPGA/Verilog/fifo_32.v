@@ -1,4 +1,4 @@
-/***********************************************************************
+/******************************************************************************************
 Wrapper around Lattice ice40 Block RAM to make it look like 32 bit FIFO
 This FIFO provides full/empty flags
 
@@ -7,7 +7,7 @@ If you try to write data when the FIFO is Full it is ignored
 If you try to read data when the FIFO is Empty, the last value read will stay on the output 
 
 Dan McGraw, dpm39, University of Cambridge
-***********************************************************************/
+*******************************************************************************************/
 
 module fifo_32
 (
