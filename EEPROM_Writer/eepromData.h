@@ -11,7 +11,7 @@ const uint8_t eepromData[127] = {
 
 //The original source of this data is kindly provided by Adafruit 
 //to support their TFP401 breakout board, one of which was purchased
-//during development. 
+//during development. All annotations are dpm39
 
 //All changes have had the original saved, marked ADAFRUIT,
 //the modified version is marked dpm39 with explanation
@@ -111,4 +111,4 @@ const uint8_t eepromData[127] = {
 //Checksum (1 byte sum of all 128 bytes shall be 0) 
 //0x17 //ADAFRUIT
 //dpm39: will calculate whilst programming as can't be bothered manually working it out each time
-}
+};
