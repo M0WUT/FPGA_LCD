@@ -74,14 +74,14 @@ const uint8_t eepromData[127] = {
 0x01, 0x01, //Standard Timing Identification 8
 
 //Detailed Timing Description 1 - only option available
-0x80, 0x0C, //Pixel clock / 10000 - stored LS Byte first
+(PIXEL_CLOCK_FREQ & 0xFF), ((PIXEL_CLOCK_FREQ >> 8) & 0xFF), //Pixel clock / 10000 - stored LS Byte first
 (HORIZONTAL_ACTIVE & 0xFF), //Horizontal Active Pixels, lower 8 bits
 (HORIZONTAL_BLANK & 0xFF), //Horizontal Blanking Pixels - lower 8 bits
 ((HORIZONTAL_ACTIVE >> 4) & 0xF0) | ((HORIZONTAL_BLANK >> 8) & 0x0F), //Upper nibble: upper 4 bits of Horizontal Active, Lower nibble, upper 4 bits of Horizontal Blankin
 (VERTICAL_ACTIVE & 0xFF), //Vertical Active Lines, lower 8 bits
 (VERTICAL_BLANK & 0xFF), //Vertical Blanking Lines, lower 8 bits
 ((VERTICAL_ACTIVE >> 4) & 0xF0) | ((VERTICAL_BLANK >> 8) & 0x0F), //Upper nibble: upper 4 bits of Vertical Active, Lower nibble, upper 4 bits of Vertical Blanking
-0x0, //Horizontal Sync Offset (pixels from blanking starts, lower 8 bits)
+0x00, //Horizontal Sync Offset (pixels from blanking starts, lower 8 bits)
 HSYNC_WIDTH & 0xFF, //Horizontal Sync Pulse Width (pixels, lower 8 bits)
 VSYNC_WIDTH & 0x0F, //Upper nibble: lines, lower 4 bits of Vertical Sync Offset, Lower nibble: lines, lower 4 bits of Vertical Sync Pulse Width
 ((HSYNC_WIDTH >> 4) & 0x30) | ((VSYNC_WIDTH >> 4) & 0x03), //Two bit pairs containg the upper 2 bits of:
