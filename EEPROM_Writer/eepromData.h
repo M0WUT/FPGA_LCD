@@ -1,3 +1,6 @@
+#ifndef	eepromDataH
+#define eepromDataH
+
 const uint8_t eepromData[127] = {
 
 //Setup for 800x600 display
@@ -112,3 +115,4 @@ const uint8_t eepromData[127] = {
 //0x17 //ADAFRUIT
 //dpm39: will calculate whilst programming as can't be bothered manually working it out each time
 };
+#endif
