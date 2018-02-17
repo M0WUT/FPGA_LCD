@@ -53,7 +53,7 @@ assign w_clockEnable = (r_state != s_IDLE);
 /////////////////
 //Clock Divider//
 ////////////////
-parameter 	CLOCKS_PER_BIT = 50; //MUST BE EVEN
+parameter 	CLOCKS_PER_BIT = 30;
 reg[7:0]	r_clockCounter = 0;
 wire		w_clockEnable;
 

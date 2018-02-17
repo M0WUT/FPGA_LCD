@@ -1,6 +1,6 @@
 /******************************************************************************************
 Wrapper around Lattice ice40 Block RAM to make it look like 32 bit FIFO
-This FIFO provides full/empty flags
+This FIFO provides full/empty flags, data is clocked in/out on rising edge
 
 //NOTE
 If you try to write data when the FIFO is Full it is ignored
@@ -13,12 +13,13 @@ module fifo_32
 (
 	//Input side
 	input 			i_inputClock,
-	input[32:0]		i_inputData,
+	input[31:0]		i_inputData,
+	input			i_dataValid,
 	output			o_fullFlag,
 	
 	//Output side
 	input			i_outputClock,
-	output[32:0]	o_outputData,
+	output[31:0]	o_outputData,
 	output			o_emptyFlag
 );
 
@@ -56,7 +57,7 @@ SB_RAM256x16 lsb
 	//Writing
 	.WADDR(r_writeAddress[7:0]),
 	.WCLK(i_inputClock),
-	.WCLKE(!o_emptyFlag),
+	.WCLKE(!o_emptyFlag && i_dataValid),
 	.WDATA(i_inputData[15:0]),
 	.WE(1'b1),
 	.MASK(16'b0) //0 in a bit allows that bit to be written
@@ -74,7 +75,7 @@ SB_RAM256x16 msb
 	//Writing
 	.WADDR(r_writeAddress[7:0]),
 	.WCLK(i_inputClock),
-	.WCLKE(!o_emptyFlag),
+	.WCLKE(!o_emptyFlag && i_dataValid),
 	.WDATA(i_inputData[31:16]),
 	.WE(1'b1),
 	.MASK(16'b0) //0 in a bit allows that bit to be written

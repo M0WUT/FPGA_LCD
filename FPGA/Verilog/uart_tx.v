@@ -8,9 +8,7 @@ module uart_tx
 	output 			o_txDone
 );
 
-parameter 		CLOCK_SPEED = 1000000;
-parameter 		BAUD_RATE = 9600;
-parameter 		CLOCKS_PER_BIT = CLOCK_SPEED / BAUD_RATE; 
+parameter 		CLOCKS_PER_BIT = 10; 
 
 //states for the state machine
 parameter 		s_IDLE = 0;
