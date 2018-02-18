@@ -24,8 +24,8 @@ module fifo_32
 );
 
 //Address pointers
-reg[7:0] r_readAddress = 0;
-reg[7:0] r_writeAddress = 0;
+reg[7:0] r_readAddress;
+reg[7:0] r_writeAddress;
 
 assign o_emptyFlag = (r_readAddress == r_writeAddress); //We have no data if the current location to be written is the current to be read
 assign o_fullFlag = (r_writeAddress + 1 == r_readAddress); //Full if we have looped around the entire buffer and are about to overwrite unread data
@@ -82,7 +82,7 @@ SB_RAM256x16 msb
 );
 
 //Update address on falling edge so stable when data is read on rising edge
-always @(negedge i_inputClock) r_writeAddress <= (o_fullFlag ? r_writeAddress : r_writeAddress + 8'b1);
-always @(negedge i_outputClock) r_readAddress <= (o_emptyFlag ? r_readAddress : r_readAddress + 8'b1);
+always @(negedge i_inputClock) r_writeAddress <= (o_fullFlag == 1 ? r_writeAddress : r_writeAddress + 8'b1);
+always @(negedge i_outputClock) r_readAddress <= (o_emptyFlag ==1 ? r_readAddress : r_readAddress + 8'b1);
 
 endmodule //fifo_32

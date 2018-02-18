@@ -31,22 +31,25 @@ module comms_master
 	
 	//Control signals
 	input 			i_setup,
+	input			i_activate,
 	input 			i_shutdown,
 	
 	//SPI (Named to match with HDP pin naming)
 	input			i_sout, //MOSI
 	output			o_sen, //CS (active low)
 	output			o_sck, //SCK (data clocked on rising edge)
-	output reg		o_sdat, //MISO
+	output  		o_sdat, //MISO
 	
 	//UART
 	input 			i_uartRx,
 	output			o_uartTx,
 	
 	//Done flag
-	output			o_setupDone
+	output			o_done
 	
 );
+
+parameter CLOCK_SPEED = 50;
 
 spi #(.CLOCKS_PER_BIT(CLOCK_SPEED)) SPI_INST
 (
@@ -93,6 +96,7 @@ reg[7:0]	r_spiTxData = 0;
 //SPI Rx
 reg			r_spiRxBegin = 0;
 reg[6:0]	r_spiRxAddress = 0;
+wire[7:0]	w_spiRxData;
 
 //UART Tx
 reg 		r_uartTxBegin = 0;
@@ -114,9 +118,9 @@ parameter	s_SET_RETURN_ADDRESS = 5;
 parameter	s_SET_CURRENT_ADDRESS = 6;
 parameter	s_SET_CLOCK = 7;
 parameter	s_STANDBY = 8;
-parameter	s_WAITING = 9;
-parameter	s_ACTIVE = 10;
-parameter	s_SETUP_DONE = 11;
+parameter	s_DONE = 9;
+parameter	s_WAITING = 10;
+
 
 //Addresses
 parameter	CONFIG_ADDRESS = 'h78;
@@ -125,7 +129,7 @@ parameter	SERIAL_COMMAND_ADDRESS = 'h08;
 parameter	HDP_MODE_ADDRESS = 'h01;
 parameter	HDP_CLOCK_ADDRESS = 'h09;
 
-assign o_setupDone = (r_state == s_SETUP_DONE);
+assign o_done = (r_state == s_DONE);
 
 always @(posedge i_clock)
 begin
@@ -135,6 +139,20 @@ begin
 		if(i_setup == 1)
 		begin
 			r_state <= s_ID_REQUEST;
+		end
+		else if(i_activate == 1)
+		begin
+			r_spiTxData <= 'h2;
+			r_spiTxAddress <= HDP_MODE_ADDRESS;
+			r_spiTxBegin <= 1;
+			r_state <= s_WAITING;
+		end
+		else if(i_shutdown == 1)
+		begin
+			r_spiTxData <= 0;
+			r_spiTxAddress <= HDP_MODE_ADDRESS;
+			r_spiTxBegin <= 1;
+			r_state <= s_WAITING;
 		end
 		else
 			r_state <= s_IDLE;
@@ -165,10 +183,10 @@ begin
 		begin	
 			if(w_spiRxData == 'h20)
 			begin
-				r_state <= s_SERIAL_ROW_LSB;
 				r_spiTxAddress <= SERIAL_ROW_ADDRESS;
 				r_spiTxData <= 0;
 				r_spiTxBegin <= 1;
+				r_state <= s_SERIAL_ROW_LSB;
 			end
 			else
 				r_state <= s_FAILED;
@@ -185,6 +203,7 @@ begin
 			r_spiTxAddress <= SERIAL_ROW_ADDRESS + 1;
 			r_spiTxData <= 0;
 			r_spiTxBegin <= 1;
+			r_state <= s_SET_RETURN_ADDRESS;
 		end
 		else
 			r_state <= s_SERIAL_ROW_LSB;
@@ -198,6 +217,7 @@ begin
 			r_spiTxAddress <= SERIAL_COMMAND_ADDRESS;
 			r_spiTxData <= 'h30;
 			r_spiTxBegin <= 1;
+			r_state <= s_SET_CURRENT_ADDRESS;
 		end
 		else
 			r_state <= s_SET_RETURN_ADDRESS;
@@ -211,6 +231,7 @@ begin
 			r_spiTxAddress <= SERIAL_COMMAND_ADDRESS;
 			r_spiTxData <= 'h40;
 			r_spiTxBegin <= 1;
+			r_state <= s_SET_CLOCK;
 		end
 		else
 			r_state <= s_SET_CURRENT_ADDRESS;
@@ -224,6 +245,7 @@ begin
 			r_spiTxAddress <= HDP_CLOCK_ADDRESS;
 			r_spiTxData <= CLOCK_SPEED;
 			r_spiTxBegin <= 1;
+			r_state <= s_STANDBY;
 		end
 		else
 			r_state <= s_SET_CLOCK;
@@ -238,39 +260,27 @@ begin
 			r_spiTxData <= 'h1; //Standby mode
 			r_spiTxBegin <= 1;
 			r_clockCounter <= 0;
+			r_state <= s_WAITING;
 		end
 		else
 			r_state <= s_STANDBY;
 	end //case s_STANDBY
 
-	s_WAITING:
+	s_DONE:
 	begin
-		r_spiTxBegin <= 0;
-		if(r_clockCounter > 1000000)
-		begin
-			r_clockCounter <= 0;
-			r_spiTxAddress <= HDP_MODE_ADDRESS;
-			r_spiTxData <= 'h2; //Active mode
-			r_spiTxBegin <= 1;
-		end
-		else
-			r_clockCounter <= r_clockCounter + 1;
-	end //case s_WAITING
+		//Provides a single clock delay for the done flag to be set high
+		r_state <= s_IDLE;
+	end
 	
-	s_ACTIVE:
+	s_WAITING:
 	begin
 		r_spiTxBegin <= 0;
 		if(w_spiTxDone == 1)
 			r_state <= s_DONE;
 		else
-			r_state <= s_ACTIVE;
-	end //case s_ACTIVE
+			r_state <= s_WAITING;
+	end //case s_WAITING
 	
-	s_SETUP_DONE:
-	begin
-		//Provides a single clock delay for the done flag to be set high
-		r_state <= s_IDLE;
-	end
 	endcase
 end
 

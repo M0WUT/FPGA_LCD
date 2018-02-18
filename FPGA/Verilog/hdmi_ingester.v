@@ -18,13 +18,12 @@ module hdmi_ingester
 	//FIFO out
 	input				i_fifoFull,
 	output				o_dataValid,
-	output				o_fifoClock,
+	input				o_fifoClock,
 	output reg[31:0]	o_fifoData
 );
 
 reg[1:0]	r_state;
 reg[31:0]	r_tempData;
-reg			r_clockEnable;
 //Important to use a reg rather than a wire so r_clockEnable can only change synchronously with i_hdmiClock
 
 //Even though data is only sent to FIFO on 3 out of 4 clocks,

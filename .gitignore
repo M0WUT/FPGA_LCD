@@ -1,3 +1,3 @@
 FPGA/Verilog/FPGA_LCD_top/*
-FPGA/Verilog/Tests/spi_test/*
-!FPGA/Verilog/Tests/spi_test/spi_test.v
+FPGA/Testbenches/SPI/*
+!FPGA/Testbenches/SPI/spi_testbench.v

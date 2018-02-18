@@ -14,6 +14,7 @@ module uart_tx_supervisor
 	output			o_txSerial,
 	output reg		o_txDone
 );
+parameter 		CLOCKS_PER_BIT = 10;
 
 uart_tx #(.CLOCKS_PER_BIT(CLOCKS_PER_BIT)) UART_TX_INSTANCE
 (
@@ -25,7 +26,7 @@ uart_tx #(.CLOCKS_PER_BIT(CLOCKS_PER_BIT)) UART_TX_INSTANCE
 	.o_txDone(w_txDone)
 );
 
-parameter 		CLOCKS_PER_BIT = 10;
+
 
 
 reg[111:0]			r_txData = 0;

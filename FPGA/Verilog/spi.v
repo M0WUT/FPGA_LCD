@@ -55,7 +55,7 @@ assign w_clockEnable = (r_state != s_IDLE);
 ////////////////
 parameter 	CLOCKS_PER_BIT = 30;
 reg[7:0]	r_clockCounter = 0;
-wire		w_clockEnable;
+
 
 assign o_sck = (r_clockCounter > CLOCKS_PER_BIT[7:1]); //[7:1] is a divide by 2 in effect
 //If clock is disabled or has overflowed, set r_clockCounter to 0. This also takes o_sck low which is its idle state
