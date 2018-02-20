@@ -3,3 +3,5 @@ FPGA/Testbenches/SPI/*
 !FPGA/Testbenches/SPI/spi_testbench.v
 FPGA/Testbenches/FIFO/*
 !FPGA/Testbenches/FIFO/fifo_testbench.v
+FPGA/Testbenches/HDMI/*
+!FPGA/Testbenches/HDMI/hdmi_testbench.v
