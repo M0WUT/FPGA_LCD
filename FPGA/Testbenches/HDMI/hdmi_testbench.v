@@ -12,7 +12,7 @@ hdmi_ingester HDMI_INST
 	.i_hdmiClock(r_clock),
 	.i_hdmiEnable(1'b1),
 
-	//FIFO out
+	//Output to FIFO
 	.i_fifoFull(1'b0),
 	.o_dataValid(w_dataValid),
 	.o_fifoClock(w_fifoClock),
