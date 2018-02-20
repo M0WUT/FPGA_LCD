@@ -18,17 +18,14 @@ module hdmi_ingester
 	//FIFO out
 	input				i_fifoFull,
 	output				o_dataValid,
-	input				o_fifoClock,
+	output				o_fifoClock,
 	output reg[31:0]	o_fifoData
 );
 
 reg[1:0]	r_state = 0;
 reg[31:0]	r_tempData = 0;
-//Important to use a reg rather than a wire so r_clockEnable can only change synchronously with i_hdmiClock
 
-//Even though data is only sent to FIFO on 3 out of 4 clocks,
-//the clock enable pin can be used to disable the clock having effect when desired
-assign o_fifoClock = !i_hdmiClock && i_hdmiEnable; 
+assign o_fifoClock = !i_hdmiClock && i_hdmiEnable; //Allow HDMI input to be disabled during startup
 
 assign o_dataValid = (r_state != 0); // Used to indicate valid data in o_fifoData
 
