@@ -7,3 +7,4 @@ FPGA/Testbenches/HDMI/*
 !FPGA/Testbenches/HDMI/hdmi_testbench.v
 FPGA/Testbenches/Ingester/*
 !FPGA/Testbenches/Ingester/ingester_testbench.v
+Test Images/*

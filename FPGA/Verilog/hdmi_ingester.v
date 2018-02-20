@@ -24,10 +24,12 @@ module hdmi_ingester
 
 reg[1:0]	r_state = 0;
 reg[31:0]	r_tempData = 0;
+//First time we are in state 0, data is invalid, all others times, data is valid so this deals with that
+reg			r_initComplete = 0; 
 
 assign o_fifoClock = !i_hdmiClock && i_hdmiEnable; //Allow HDMI input to be disabled during startup
 
-assign o_dataValid = (r_state != 0); // Used to indicate valid data in o_fifoData
+assign o_dataValid = (r_state != 0) && (r_initComplete == 1); // Used to indicate valid data in o_fifoData
 
 always @(posedge i_hdmiClock) //Assumes that TFP401 is in DFP mode where pixel clock is only active during valid video data
 begin
@@ -41,6 +43,7 @@ begin
 		begin
 			o_fifoData[31:0] <= {r_tempData[31:8], i_hdmiData[23:16]};
 			r_tempData[31:16] <= i_hdmiData[15:0];
+			r_initComplete <= 1; //Set first time we get here
 		end
 	
 		2: //Have 16MSB of r_tempData filled

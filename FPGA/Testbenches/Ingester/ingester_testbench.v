@@ -7,11 +7,16 @@ reg[23:0]	r_hdmiData = 0;
 wire[31:0]	w_fifoData;
 wire[31:0]	w_fifoOutput;
 
+wire 		w_hdmiClock;
+assign w_hdmiClock = r_clock && !r_writeComplete;
+wire		w_fifoReadClock;
+assign w_fifoReadClock = r_clock && r_writeComplete;
+
 hdmi_ingester HDMI_INST
 (
 	//HDMI in
 	.i_hdmiData(r_hdmiData),
-	.i_hdmiClock(r_clock && !r_writeComplete),
+	.i_hdmiClock(w_hdmiClock),
 	.i_hdmiEnable(1'b1),
 
 	//Output to FIFO
@@ -31,12 +36,9 @@ fifo_32 FIFO_INST
 	
 	
 	//Output side
-	.i_outputClock(r_clock && r_writeComplete),
+	.i_outputClock(w_fifoReadClock),
 	.o_outputData(w_fifoOutput),
 	.o_emptyFlag(w_fifoEmpty)
-	
-
-
 );
 
 always #1 r_clock <= !r_clock;
