@@ -16,9 +16,11 @@ void panic(String message)
 void i2c_write(uint8_t address, uint8_t data)
 {
 	Wire.beginTransmission(EDID_ADDRESS);
-	Wire.write(address);
-	Wire.write(data);
-	if(Wire.endTransmission() != 0) panic("I2C Write at address: " + String(address) + " failed");
+	Wire.write((byte)address);
+	Wire.write((byte)data);
+  int x = Wire.endTransmission();
+	if(x != 0) panic("I2C Write at address " + String(address) + " failed, error " + String(x));
+  delay(5);
 }
 
 
@@ -39,7 +41,8 @@ uint8_t i2c_read(uint8_t address)
 	return Wire.read();
 }	
 
-int main()
+
+void setup()
 {
 	//Wanted to do in preprocessor but sizeof not supported
 	if (sizeof(eepromData) != 127) panic("EEPROM Data is wrong size");		
@@ -48,21 +51,30 @@ int main()
 	Wire.begin();
 	
 	Serial.println("EDID EEPROM Writer, dpm39");
-	i2c_read(0); //This will never return and notify user is EEPROM not responding
+}
+
+void loop()
+{
+	//i2c_read(0); //This will never return and notify user is EEPROM not responding
 	
 	Serial.println("EEPROM detected");
 	Serial.println("\n\nPress any key to flash EEPROM Data...");
+ 
 	while(!Serial.available());
-	
+
+  Serial.println("Flashing data...");
+   
 	uint8_t checksum = 0;
 	for(int i = 0; i < 127; i++)
 	{
 		i2c_write(i, eepromData[i]);
 		checksum += eepromData[i];
 	}
-	
+
+  
 	//The 128th (in address 127) byte is a checksum such that the byte wise sum of all 128 bytes is 0
-	i2c_write(127, 0 - checksum);
+  i2c_write(127, (256 - checksum) & 0xFF);
+
 	
 	//Pad rest with 0xFF
 	for(int i = 128; i<EEPROM_SIZE; i++)
@@ -74,8 +86,9 @@ int main()
 		if(i2c_read(i) != eepromData[i])
 				panic("Verification failed at address: " + String(i) + " Got: " + String(i2c_read(i)) + " Expected: " + String(eepromData[i]));
 				
-				
+	
+  while(Serial.available()) Serial.read();
 	Serial.println("Verification complete");
-	return 0;
+
 }
 

@@ -81,10 +81,10 @@ const uint8_t eepromData[127] = {
 (VERTICAL_ACTIVE & 0xFF), //Vertical Active Lines, lower 8 bits
 (VERTICAL_BLANK & 0xFF), //Vertical Blanking Lines, lower 8 bits
 ((VERTICAL_ACTIVE >> 4) & 0xF0) | ((VERTICAL_BLANK >> 8) & 0x0F), //Upper nibble: upper 4 bits of Vertical Active, Lower nibble, upper 4 bits of Vertical Blanking
-0x00, //Horizontal Sync Offset (pixels from blanking starts, lower 8 bits)
+(HSYNC_OFFSET & 0xFF), //Horizontal Sync Offset (pixels from blanking starts, lower 8 bits)
 HSYNC_WIDTH & 0xFF, //Horizontal Sync Pulse Width (pixels, lower 8 bits)
-VSYNC_WIDTH & 0x0F, //Upper nibble: lines, lower 4 bits of Vertical Sync Offset, Lower nibble: lines, lower 4 bits of Vertical Sync Pulse Width
-((HSYNC_WIDTH >> 4) & 0x30) | ((VSYNC_WIDTH >> 4) & 0x03), //Two bit pairs containg the upper 2 bits of:
+((VSYNC_OFFSET << 4) & 0xF0) | (VSYNC_WIDTH & 0x0F), //Upper nibble: lines, lower 4 bits of Vertical Sync Offset, Lower nibble: lines, lower 4 bits of Vertical Sync Pulse Width
+((HSYNC_OFFSET >> 2) & 0xC0) | ((HSYNC_WIDTH >> 4) & 0x30) | ((VSYNC_OFFSET >> 2) & 0x0C) | ((VSYNC_WIDTH >> 4) & 0x03), //Two bit pairs containg the upper 2 bits of:
 	  //[7:6] - Horizontal Sync Offset, [5:4] - Horizontal Sync Pulse Width
 	  //[3:2] - Vertical Sync Offset, [1:0] - Vertical Sync Pulse Width
 0x6C, //Horizontal Image size (mm, lower 8 bits)
