@@ -49,7 +49,8 @@ void setup()
 
 	Serial.begin(9600);
 	Wire.begin();
-	
+	pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
 	Serial.println("EDID EEPROM Writer, dpm39");
 }
 
@@ -58,9 +59,7 @@ void loop()
 	//i2c_read(0); //This will never return and notify user is EEPROM not responding
 	
 	Serial.println("EEPROM detected");
-	Serial.println("\n\nPress any key to flash EEPROM Data...");
- 
-	while(!Serial.available());
+	
 
   Serial.println("Flashing data...");
    
@@ -89,6 +88,10 @@ void loop()
 	
   while(Serial.available()) Serial.read();
 	Serial.println("Verification complete");
+  digitalWrite(LED_BUILTIN, HIGH);
+
+  Serial.println("\n\nPress any key to flash EEPROM Data...");
+  while(!Serial.available());
 
 }
 
