@@ -7,4 +7,8 @@ FPGA/Testbenches/HDMI/*
 !FPGA/Testbenches/HDMI/hdmi_testbench.v
 FPGA/Testbenches/Ingester/*
 !FPGA/Testbenches/Ingester/ingester_testbench.v
+FPGA/Testbenches/Comms Master/*
+!FPGA/Testbenches/Comms Master/comms_master_testbench.v
+FPGA/Test Projects/Blink/blink/*
+!FPGA/Testbenches/Ingester/ingester_testbench.v
 Test Images/*

@@ -18,10 +18,10 @@ module spi
 	output			o_rxDone,
 	
 	//IO (Named to match with HDP pin naming)
-	input			i_sout, //MOSI
+	input			i_sout, //MISO
 	output			o_sen, //CS (active low)
 	output			o_sck, //SCK (data clocked on rising edge)
-	output reg		o_sdat //MISO
+	output reg		o_sdat //MOSI
 );
 
 reg[15:0]			r_txData;
@@ -75,7 +75,7 @@ begin
 		begin
 			r_state <= s_RXSENDING;
 			r_rxAddress <= {1'b1, i_rxAddress[6:0]};
-			r_bitCounter <= 4'd6; //1 read bit plus 6 address bits so MSB is bit 6
+			r_bitCounter <= 4'd7; //1 read bit plus 7 address bits so MSB is bit 7
 		end
 		else if(i_txBegin)
 		begin
@@ -88,7 +88,6 @@ begin
 	
 	s_TXSENDING:
 	begin
-	//Note that the 
 		o_sdat <= r_txData[r_bitCounter];
 		if(r_clockCounter == 0)
 		begin
@@ -97,7 +96,7 @@ begin
 			else
 				r_bitCounter <= r_bitCounter - 1;
 		end
-	end //case s_TXSTARTBIT
+	end //case s_TXSENDING
 	
 	s_TXDONE:
 	begin

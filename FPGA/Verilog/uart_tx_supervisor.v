@@ -16,18 +16,6 @@ module uart_tx_supervisor
 );
 parameter 		CLOCKS_PER_BIT = 10;
 
-uart_tx #(.CLOCKS_PER_BIT(CLOCKS_PER_BIT)) UART_TX_INSTANCE
-(
-	.i_clock(i_clock),
-	.i_txBegin(r_txBegin),
-	.i_txData(r_uartTxData),
-	.o_txBusy(w_txBusy),
-	.o_txSerial(o_txSerial),
-	.o_txDone(w_txDone)
-);
-
-
-
 
 reg[111:0]			r_txData = 0;
 reg					r_txBegin = 0;
@@ -42,6 +30,22 @@ parameter			s_IDLE = 0;
 parameter			s_SENDING = 1;
 parameter			s_DONE = 2;
 reg[1:0]			r_state = 0;
+
+
+uart_tx #(.CLOCKS_PER_BIT(CLOCKS_PER_BIT)) UART_TX_INSTANCE
+(
+	.i_clock(i_clock),
+	.i_txBegin(r_txBegin),
+	.i_txData(r_uartTxData),
+	.o_txBusy(w_txBusy),
+	.o_txSerial(o_txSerial),
+	.o_txDone(w_txDone)
+);
+
+
+
+
+
 
 always @ (posedge i_clock)
 begin

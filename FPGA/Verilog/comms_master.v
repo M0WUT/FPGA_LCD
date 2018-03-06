@@ -35,10 +35,10 @@ module comms_master
 	input 			i_shutdown,
 	
 	//SPI (Named to match with HDP pin naming)
-	input			i_sout, //MOSI
+	input			i_sout, //MISO
 	output			o_sen, //CS (active low)
 	output			o_sck, //SCK (data clocked on rising edge)
-	output  		o_sdat, //MISO
+	output  		o_sdat, //MOSI
 	
 	//UART
 	input 			i_uartRx,
@@ -50,43 +50,6 @@ module comms_master
 );
 
 parameter CLOCK_SPEED = 50;
-
-spi #(.CLOCKS_PER_BIT(CLOCK_SPEED)) SPI_INST
-(
-	//Clock
-	.i_clock(i_clock),
-	
-	//Tx
-	.i_txBegin(r_spiTxBegin),
-	.i_txAddress(r_spiTxAddress),
-	.i_txData(r_spiTxData),
-	.o_txBusy(w_spiTxBusy),
-	.o_txDone(w_spiTxDone),
-
-	//Rx
-	.i_rxBegin(r_spiRxBegin),
-	.i_rxAddress(r_spiRxAddress),
-	.o_rxData(w_spiRxData),
-	.o_rxBusy(w_spiRxBusy),
-	.o_rxDone(w_spiRxDone),
-	
-	//IO
-	.i_sout(i_sout),
-	.o_sen(o_sen),
-	.o_sck(o_sck),
-	.o_sdat(o_sdat)
-);
-
-uart_tx_supervisor #(.CLOCKS_PER_BIT(CLOCK_SPEED * 100)) UART_TX_INST
-(
-	.i_clock(i_clock),
-	.i_txBegin(r_uartTxBegin),
-	.i_txData(r_uartTxData),
-	.i_txDataLength(r_uartTxDataLength),
-	.o_txBusy(w_uartTxBusy),
-	.o_txSerial(o_uartTx),
-	.o_txDone(w_uartTxDone)
-);
 
 //SPI Tx
 reg 		r_spiTxBegin = 0;
@@ -131,6 +94,43 @@ parameter	HDP_CLOCK_ADDRESS = 'h09;
 
 assign o_done = (r_state == s_DONE);
 
+spi #(.CLOCKS_PER_BIT(CLOCK_SPEED)) SPI_INST
+(
+	//Clock
+	.i_clock(i_clock),
+	
+	//Tx
+	.i_txBegin(r_spiTxBegin),
+	.i_txAddress(r_spiTxAddress),
+	.i_txData(r_spiTxData),
+	.o_txBusy(w_spiTxBusy),
+	.o_txDone(w_spiTxDone),
+
+	//Rx
+	.i_rxBegin(r_spiRxBegin),
+	.i_rxAddress(r_spiRxAddress),
+	.o_rxData(w_spiRxData),
+	.o_rxBusy(w_spiRxBusy),
+	.o_rxDone(w_spiRxDone),
+	
+	//IO
+	.i_sout(i_sout),
+	.o_sen(o_sen),
+	.o_sck(o_sck),
+	.o_sdat(o_sdat)
+);
+
+uart_tx_supervisor #(.CLOCKS_PER_BIT(CLOCK_SPEED * 100)) UART_TX_INST
+(
+	.i_clock(i_clock),
+	.i_txBegin(r_uartTxBegin),
+	.i_txData(r_uartTxData),
+	.i_txDataLength(r_uartTxDataLength),
+	.o_txBusy(w_uartTxBusy),
+	.o_txSerial(o_uartTx),
+	.o_txDone(w_uartTxDone)
+);
+
 always @(posedge i_clock)
 begin
 	case (r_state)
@@ -162,10 +162,12 @@ begin
 	begin
 		r_spiRxAddress <= CONFIG_ADDRESS;
 		r_spiRxBegin <= 1;
+		r_state <= s_SERIAL_ROW_MSB;
 	end //case s_ID_REQUEST
 	
 	s_FAILED:
 	begin
+		r_uartTxBegin <= 0;
 		if(r_clockCounter > CLOCK_SPEED * 1000000)
 		begin
 			r_clockCounter <= 0;
@@ -181,8 +183,8 @@ begin
 		r_spiRxBegin <= 0;
 		if(w_spiRxDone == 1)
 		begin	
-			if(w_spiRxData == 'h20)
-			begin
+			if(w_spiRxData == 'h20) //Only possible ID for HDP1280
+			begin				
 				r_spiTxAddress <= SERIAL_ROW_ADDRESS;
 				r_spiTxData <= 0;
 				r_spiTxBegin <= 1;
@@ -198,6 +200,7 @@ begin
 	s_SERIAL_ROW_LSB:
 	begin
 		r_spiTxBegin <= 0;
+		r_uartTxBegin <= 0;
 		if(w_spiTxDone == 1)
 		begin
 			r_spiTxAddress <= SERIAL_ROW_ADDRESS + 1;

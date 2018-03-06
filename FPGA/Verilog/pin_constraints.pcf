@@ -83,6 +83,7 @@ set_io o_valid 39
 set_io o_sync 41
 set_io o_update 42
 set_io o_invert 38
+set_io o_nReset 130
 set_io o_lcdClock 37
 
 ###UART
