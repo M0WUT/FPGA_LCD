@@ -63,7 +63,7 @@ comms_master #(.CLOCK_SPEED(CLOCK_SPEED)) COMMS_MASTER_INST
 	
 	//UART
 	.i_uartRx(i_uartRx), 
-	.o_uartTx(o_uartTx), 
+	//.o_uartTx(o_uartTx),  //DEBUG
 	
 	//Done flag
 	.o_done(w_commDone)
@@ -80,13 +80,21 @@ fifo_32 FIFO_INST
 	.i_inputClock(w_fifoClock),
 	.i_inputData(w_fifoData),
 	.i_dataValid(w_fifoDataValid),
-	.o_fullFlag(o_fifoFull),
+	//.o_fullFlag(o_fifoFull), //DEBUG
 	
 	//Output to LCD
-	.i_outputClock(w_lcdClock),
+	.i_outputClock(w_lcdClock && o_valid),
 	.o_outputData(w_lcdData),
 	.o_emptyFlag(o_fifoEmpty)
 );
+
+/////////
+//DEBUG//
+/////////
+assign o_uartTx = o_update;
+assign o_fifoFull = i_vSync;
+
+assign o_active = (r_state == s_NORMAL);
 
 hdmi_ingester HDMI_INGESTER_INST
 (
@@ -94,8 +102,8 @@ hdmi_ingester HDMI_INGESTER_INST
 	.i_hdmiData(i_hdmiData),
 	.i_hdmiClock(i_hdmiClock),
 	.i_hSync(i_hSync),
-	.i_vSync(i_vSync),
-	.i_hdmiEnable(w_hdmiEnable),
+	//.i_vSync(i_vSync), //DEBUG
+	.i_hdmiEnable(o_active),
 	
 	//Fifo connections
 	.i_fifoFull(o_fifoFull),
@@ -104,12 +112,11 @@ hdmi_ingester HDMI_INGESTER_INST
 	.o_fifoData(w_fifoData)
 );
 
+
+
 //Used to gate the clock to the HDP
 assign 		o_nReset = ((r_state != s_START) && (r_state != s_SHUTDOWN));
 assign 		o_lcdClock = (w_lcdClock && o_nReset); //Clock is only active when reset is high
-
-assign 		o_active = ((r_state >= s_NORMAL) && (r_state < s_SHUTDOWN));
-
 
 parameter   s_START = 0;
 parameter 	s_RESET = 1;
@@ -131,6 +138,7 @@ reg[31:0]	r_lineCounter = 0; //What line we are on
 assign o_valid = (r_state == s_NORMAL) && (r_linePacketCounter < 40);
 assign o_update = (r_state == s_NORMAL) && (r_packetCounter < 28);
 assign o_invert = 0; //DEBUG
+assign o_sync = 0;
 
 parameter DATA_END = (44 * 1280); //44 clocks per line * 1280 lines, zero indexed hence -1
 parameter FRAME_END = DATA_END + 24; //Back porch of 24 clock at the end
@@ -211,13 +219,17 @@ begin
 		begin
 			if(r_linePacketCounter < 40)
 			begin
-				//This is was valid data is sent
-				if((r_lineCounter < 320) || (r_lineCounter > 960))
-					o_lcdData <= 32'hFFFFFFFF;
+				////////////////////////////////////
+				//This is where valid data is sent//
+				////////////////////////////////////
+				
+				if(o_fifoEmpty == 1)
+					o_lcdData <= 32'b0;
 				else
-					o_lcdData <= 32'h0;
+					o_lcdData <= w_lcdData;
 			end	
 			else
+				//Need 4 clocks of 0 data with valid low at the end of each line
 				o_lcdData[31:0] <= 32'b0;
 		end
 		else

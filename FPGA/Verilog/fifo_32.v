@@ -42,7 +42,7 @@ begin
 	end
 end
 
-always @(negedge i_outputClock)
+always @(posedge i_outputClock) //Want to grab data on negedge so setup for LCD write on posedge
 begin
 	if(!o_emptyFlag)
 	begin
