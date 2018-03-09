@@ -1,0 +1,106 @@
+# ##############################################################################
+
+# iCEcube PCF
+
+# Version:            v1
+
+# Author:			  Dan McGraw, dpm39
+
+# File Generated:     Feb 11 2018 21:15:04
+
+# Family & Device:    iCE40HX4K
+
+# Package:            TQ144
+
+# ##############################################################################
+
+###Master Clock
+set_io i_clock50 128
+
+###HDMI Input
+set_io i_hdmiData[0] 107 
+set_io i_hdmiData[1] 106
+set_io i_hdmiData[2] 105
+set_io i_hdmiData[3] 104
+set_io i_hdmiData[4] 102
+set_io i_hdmiData[5] 101
+set_io i_hdmiData[6] 99
+set_io i_hdmiData[7] 98
+set_io i_hdmiData[8] 97
+set_io i_hdmiData[9] 96
+set_io i_hdmiData[10] 95
+set_io i_hdmiData[11] 91
+set_io i_hdmiData[12] 90
+set_io i_hdmiData[13] 88
+set_io i_hdmiData[14] 87
+set_io i_hdmiData[15] 85
+set_io i_hdmiData[16] 84
+set_io i_hdmiData[17] 83
+set_io i_hdmiData[18] 82
+set_io i_hdmiData[19] 81
+set_io i_hdmiData[20] 80
+set_io i_hdmiData[21] 79
+set_io i_hdmiData[22] 78
+set_io i_hdmiData[23] 76
+set_io i_hdmiClock 75
+set_io i_hSync 73
+set_io i_vSync 74
+
+###HDP Output
+set_io o_lcdData[0] 139
+set_io o_lcdData[1] 143
+set_io o_lcdData[2] 2
+set_io o_lcdData[3] 7
+set_io o_lcdData[4] 10
+set_io o_lcdData[5] 15
+set_io o_lcdData[6] 18
+set_io o_lcdData[7] 23
+set_io o_lcdData[8] 26
+set_io o_lcdData[9] 31
+set_io o_lcdData[10] 34
+set_io o_lcdData[11] 33
+set_io o_lcdData[12] 32
+set_io o_lcdData[13] 29
+set_io o_lcdData[14] 28
+set_io o_lcdData[15] 25
+set_io o_lcdData[16] 24
+set_io o_lcdData[17] 22
+set_io o_lcdData[18] 19
+set_io o_lcdData[19] 17
+set_io o_lcdData[20] 16
+set_io o_lcdData[21] 12
+set_io o_lcdData[22] 11
+set_io o_lcdData[23] 9
+set_io o_lcdData[24] 8
+set_io o_lcdData[25] 4
+set_io o_lcdData[26] 3
+set_io o_lcdData[27] 1
+set_io o_lcdData[28] 144
+set_io o_lcdData[29] 142
+set_io o_lcdData[30] 141
+set_io o_lcdData[31] 138
+set_io o_valid 39
+set_io o_sync 41
+set_io o_update 42
+set_io o_invert 38
+set_io o_nReset 130
+set_io o_lcdClock 37
+
+###UART
+set_io o_uartTx 115
+set_io i_uartRx 116
+
+###SPI
+set_io o_sen 135
+set_io o_sck 136
+set_io o_sdat 134
+set_io i_sout 137
+
+###Debug
+set_io o_active 112
+set_io i_shutdown 110
+set_io o_fifoFull 113
+set_io o_fifoEmpty 114
+
+
+

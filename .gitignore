@@ -1,2 +1,15 @@
-*
-!/*.v
+FPGA/Verilog/FPGA_LCD_top/*
+!FPGA/Verilog/FPGA_LCD_top/FPGA_LCD_top.v
+FPGA/Testbenches/SPI/*
+!FPGA/Testbenches/SPI/spi_testbench.v
+FPGA/Testbenches/FIFO/*
+!FPGA/Testbenches/FIFO/fifo_testbench.v
+FPGA/Testbenches/HDMI/*
+!FPGA/Testbenches/HDMI/hdmi_testbench.v
+FPGA/Testbenches/Ingester/*
+!FPGA/Testbenches/Ingester/ingester_testbench.v
+FPGA/Testbenches/Comms Master/*
+!FPGA/Testbenches/Comms Master/comms_master_testbench.v
+FPGA/Test Projects/Blink/blink/*
+!FPGA/Testbenches/Ingester/ingester_testbench.v
+Test Images/*

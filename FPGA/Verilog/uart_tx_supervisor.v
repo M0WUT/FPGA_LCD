@@ -1,6 +1,12 @@
+/******************************************************************************************
+Wrapper around the basic UART module to allow a string to be written in 1 go
+
+Dan McGraw, dpm39, University of Cambridge
+*******************************************************************************************/
+
 module uart_tx_supervisor
 (
-	input				i_clock,
+	input			i_clock,
 	input 			i_txBegin,
 	input[111:0]	i_txData,
 	input[7:0]		i_txDataLength,
@@ -8,8 +14,25 @@ module uart_tx_supervisor
 	output			o_txSerial,
 	output reg		o_txDone
 );
+parameter 		CLOCKS_PER_BIT = 10;
 
-uart_tx #(.CLOCK_SPEED(CLOCK_SPEED), .BAUD_RATE(BAUD_RATE)) UART_TX_INSTANCE
+
+reg[111:0]			r_txData = 0;
+reg					r_txBegin = 0;
+reg[7:0]			r_byteCounter = 0;
+reg[7:0]			r_uartTxData = 0;
+
+wire				w_txBusy;
+wire				w_txDone;
+
+//State machine stuff
+parameter			s_IDLE = 0;
+parameter			s_SENDING = 1;
+parameter			s_DONE = 2;
+reg[1:0]			r_state = 0;
+
+
+uart_tx #(.CLOCKS_PER_BIT(CLOCKS_PER_BIT)) UART_TX_INSTANCE
 (
 	.i_clock(i_clock),
 	.i_txBegin(r_txBegin),
@@ -19,22 +42,10 @@ uart_tx #(.CLOCK_SPEED(CLOCK_SPEED), .BAUD_RATE(BAUD_RATE)) UART_TX_INSTANCE
 	.o_txDone(w_txDone)
 );
 
-parameter 		CLOCK_SPEED = 1000000;
-parameter		BAUD_RATE = 9600;
 
-reg[111:0]		r_txData = 0;
-reg				r_txBegin = 0;
-reg[7:0]			r_byteCounter = 0;
-reg[7:0]			r_uartTxData = 0;
 
-wire				w_txBusy;
-wire				w_txDone;
 
-//State machine stuff
-parameter		s_IDLE = 0;
-parameter		s_SENDING = 1;
-parameter		s_DONE = 2;
-reg[1:0]			r_state = 0;
+
 
 always @ (posedge i_clock)
 begin
