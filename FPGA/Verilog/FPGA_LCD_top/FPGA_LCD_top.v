@@ -56,14 +56,14 @@ comms_master #(.CLOCK_SPEED(CLOCK_SPEED)) COMMS_MASTER_INST
 	.i_shutdown(r_commShutdown),
 	
 	//SPI (Named to match with HDP pin naming)
-	.i_sout(i_sout), //MOSI
+	.i_sout(i_sout), //MOSI //DEBUG
 	.o_sen(o_sen), //CS (active low)
 	.o_sck(o_sck), //SCK (data clocked on rising edge)
 	.o_sdat(o_sdat), //MISO
 	
 	//UART
 	.i_uartRx(i_uartRx), 
-	//.o_uartTx(o_uartTx),  //DEBUG
+	.o_uartTx(o_uartTx), 
 	
 	//Done flag
 	.o_done(w_commDone)
@@ -83,18 +83,12 @@ fifo_32 FIFO_INST
 	//.o_fullFlag(o_fifoFull), //DEBUG
 	
 	//Output to LCD
-	.i_outputClock(w_lcdClock && o_valid),
-	.o_outputData(w_lcdData),
-	.o_emptyFlag(o_fifoEmpty)
+	.i_outputClock(o_lcdClock && o_valid),
+	.o_outputData(w_lcdData)
+	//.o_emptyFlag(o_fifoEmpty) //DEBUG
 );
 
-/////////
-//DEBUG//
-/////////
-assign o_uartTx = o_update;
-assign o_fifoFull = i_vSync;
 
-assign o_active = (r_state == s_NORMAL);
 
 hdmi_ingester HDMI_INGESTER_INST
 (
@@ -102,7 +96,7 @@ hdmi_ingester HDMI_INGESTER_INST
 	.i_hdmiData(i_hdmiData),
 	.i_hdmiClock(i_hdmiClock),
 	.i_hSync(i_hSync),
-	//.i_vSync(i_vSync), //DEBUG
+	.i_vSync(i_vSync), 
 	.i_hdmiEnable(o_active),
 	
 	//Fifo connections
@@ -117,6 +111,11 @@ hdmi_ingester HDMI_INGESTER_INST
 //Used to gate the clock to the HDP
 assign 		o_nReset = ((r_state != s_START) && (r_state != s_SHUTDOWN));
 assign 		o_lcdClock = (w_lcdClock && o_nReset); //Clock is only active when reset is high
+assign 		o_active = (r_state == s_NORMAL);
+assign 		o_valid = (o_active && (r_linePacketCounter < 40));
+assign		o_update = (o_active && (r_packetCounter < 28));
+assign 		o_invert = 0; //DEBUG
+assign		o_sync = 0;
 
 parameter   s_START = 0;
 parameter 	s_RESET = 1;
@@ -134,18 +133,17 @@ reg[31:0]	r_packetCounter = 0; //Total number of packets sent
 reg[31:0]	r_linePacketCounter = 0; //Used to indicate where we are within a line (1280/32 = 40 packets per line)
 reg[31:0]	r_lineCounter = 0; //What line we are on
 
+/////////
+//DEBUG//
+/////////
+assign o_fifoEmpty = i_vSync;
 
-assign o_valid = (r_state == s_NORMAL) && (r_linePacketCounter < 40);
-assign o_update = (r_state == s_NORMAL) && (r_packetCounter < 28);
-assign o_invert = 0; //DEBUG
-assign o_sync = 0;
 
-parameter DATA_END = (44 * 1280); //44 clocks per line * 1280 lines, zero indexed hence -1
+parameter DATA_END = (44 * 1280); //44 clocks per line(40 valid and 4 blank) * 1280 lines
 parameter FRAME_END = DATA_END + 24; //Back porch of 24 clock at the end
 
 always @(negedge w_lcdClock)
 begin
-
 	case (r_state)
 	
 	s_START:
@@ -175,11 +173,17 @@ begin
 	
 	s_SETUP:
 	begin
-		r_commSetup <= 0;
+		
 		if(w_commDone == 1)
+		begin
+			r_commSetup <= 0;
 			r_state <= s_STANDBY;
+		end
 		else	
+		begin
+			r_commSetup <= 1;
 			r_state <= s_SETUP;
+		end
 	end //case s_SETUP
 	
 	s_STANDBY:
@@ -222,11 +226,7 @@ begin
 				////////////////////////////////////
 				//This is where valid data is sent//
 				////////////////////////////////////
-				
-				if(o_fifoEmpty == 1)
-					o_lcdData <= 32'b0;
-				else
-					o_lcdData <= w_lcdData;
+				o_lcdData <= w_lcdData;
 			end	
 			else
 				//Need 4 clocks of 0 data with valid low at the end of each line
@@ -243,8 +243,7 @@ begin
 			end
 		end
 	
-	
-	
+
 		//Code for shutdown button
 		if(i_shutdown == 0)
 		begin
@@ -275,7 +274,6 @@ begin
 	
 	s_SHUTDOWN:
 	begin
-	
 	end
 	
 	endcase

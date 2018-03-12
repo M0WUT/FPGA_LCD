@@ -22,7 +22,7 @@ module hdmi_ingester
 	output reg[31:0]	o_fifoData
 );
 
-reg[1:0]	r_state = 0;
+reg[1:0]	r_state = 0; 
 reg[31:0]	r_tempData = 0;
 //First time we are in state 0, data is invalid, all others times, data is valid so this deals with that
 reg			r_initComplete = 0; 
@@ -60,8 +60,5 @@ begin
 	endcase
 
 	r_state <= r_state + 2'b1;
-
 end
-
-
 endmodule

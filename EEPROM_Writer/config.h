@@ -6,7 +6,7 @@
 
 //Both 12 bits
 #define HORIZONTAL_ACTIVE 1280
-#define HORIZONTAL_BLANK 100 // >= 7
+#define HORIZONTAL_BLANK 200 // >= 7
 
 //Both 12 bits
 #define VERTICAL_ACTIVE 800

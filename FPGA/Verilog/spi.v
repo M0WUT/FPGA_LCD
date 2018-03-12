@@ -71,6 +71,7 @@ begin
 	
 	s_IDLE:
 	begin
+		o_sdat <= 0;
 		if(i_rxBegin)
 		begin
 			r_state <= s_RXSENDING;
@@ -100,6 +101,7 @@ begin
 	
 	s_TXDONE:
 	begin
+		o_sdat <= 0;
 		r_state <= s_IDLE; //Provides delay of 1 clock cycle for o_txDone signal
 	end //case s_TXDONE;
 	
@@ -120,6 +122,7 @@ begin
 	
 	s_RXRECEIVING:
 	begin
+		o_sdat <= 0;
 		if(r_clockCounter == CLOCKS_PER_BIT[7:1]) //We are at rising edge of serial clock
 		begin
 			r_rxData[r_bitCounter] <= i_sout;
@@ -141,6 +144,7 @@ begin
 	
 	s_RXDONE:
 	begin
+		o_sdat <= 0;
 		r_state <= s_IDLE; //1 clock delay for rx done flag to be set
 	end
 	endcase

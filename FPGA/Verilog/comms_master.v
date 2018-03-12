@@ -188,10 +188,23 @@ begin
 				r_spiTxAddress <= SERIAL_ROW_ADDRESS;
 				r_spiTxData <= 0;
 				r_spiTxBegin <= 1;
+				
+				
+				r_uartTxData <= "Detected\n";
+				r_uartTxDataLength <= 9;
+				r_uartTxBegin <= 1;
+				
 				r_state <= s_SERIAL_ROW_LSB;
 			end
 			else
+			begin
+				
+				r_uartTxData <= {"Failed", w_spiRxData, "\n"};
+				r_uartTxDataLength <= 8;
+				r_uartTxBegin <= 1;
+				
 				r_state <= s_FAILED;
+			end
 		end
 		else	
 			r_state <= s_SERIAL_ROW_MSB;
