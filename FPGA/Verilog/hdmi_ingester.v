@@ -58,7 +58,6 @@ begin
 			r_tempData <= 0;
 		end
 	endcase
-
 	r_state <= r_state + 2'b1;
 end
 endmodule

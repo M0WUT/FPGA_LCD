@@ -18,7 +18,7 @@ Shutdown is:
 * Device can then be put into reset
 
 ***********************************************************************************************
-Strongly recommend moving this task to a separate microcontroller if this is developed further.
+Strongly consider moving this task to a separate microcontroller if this is developed further.
 ***********************************************************************************************
 
 Dan McGraw, dpm39, University of Cambridge

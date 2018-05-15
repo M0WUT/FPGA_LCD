@@ -83,12 +83,13 @@ set_io o_valid 39
 set_io o_sync 41
 set_io o_update 42
 set_io o_invert 38
-set_io o_nReset 130
+###set_io o_nReset 130
+set_io o_nReset 116
 set_io o_lcdClock 37
 
 ###UART
 set_io o_uartTx 115
-set_io i_uartRx 116
+###set_io i_uartRx 116 ###Used for reset pin as forgot trace on v1 PCB
 
 ###SPI
 set_io o_sen 135

@@ -44,6 +44,11 @@ parameter CLOCK_SPEED = 50; //Clock speed in MHz
 reg		r_commSetup = 0;
 reg		r_commActivate = 0;
 reg		r_commShutdown = 0;
+wire	w_commDone;
+wire[31:0]	w_fifoData;
+wire[31:0]	w_lcdData;
+wire		w_fifoClock;
+wire		w_fifoDataValid;
 
 comms_master #(.CLOCK_SPEED(CLOCK_SPEED)) COMMS_MASTER_INST
 (
@@ -56,14 +61,14 @@ comms_master #(.CLOCK_SPEED(CLOCK_SPEED)) COMMS_MASTER_INST
 	.i_shutdown(r_commShutdown),
 	
 	//SPI (Named to match with HDP pin naming)
-	.i_sout(i_sout), //MOSI //DEBUG
+	.i_sout(i_sout), //MOSI 
 	.o_sen(o_sen), //CS (active low)
 	.o_sck(o_sck), //SCK (data clocked on rising edge)
 	.o_sdat(o_sdat), //MISO
 	
 	//UART
-	.i_uartRx(i_uartRx), 
-	.o_uartTx(o_uartTx), 
+	//.i_uartRx(i_uartRx),  //DEBUG
+	//.o_uartTx(o_uartTx), //DEBUG
 	
 	//Done flag
 	.o_done(w_commDone)
@@ -71,8 +76,6 @@ comms_master #(.CLOCK_SPEED(CLOCK_SPEED)) COMMS_MASTER_INST
 
 );
 
-wire[31:0]	w_fifoData;
-wire[31:0]	w_lcdData;
 
 fifo_32 FIFO_INST
 (
@@ -87,7 +90,6 @@ fifo_32 FIFO_INST
 	.o_outputData(w_lcdData)
 	//.o_emptyFlag(o_fifoEmpty) //DEBUG
 );
-
 
 
 hdmi_ingester HDMI_INGESTER_INST
@@ -107,11 +109,10 @@ hdmi_ingester HDMI_INGESTER_INST
 );
 
 
-
 //Used to gate the clock to the HDP
 assign 		o_nReset = ((r_state != s_START) && (r_state != s_SHUTDOWN));
 assign 		o_lcdClock = (w_lcdClock && o_nReset); //Clock is only active when reset is high
-assign 		o_active = (r_state == s_NORMAL);
+assign 		o_active = (r_state == s_NORMAL); 
 assign 		o_valid = (o_active && (r_linePacketCounter < 40));
 assign		o_update = (o_active && (r_packetCounter < 28));
 assign 		o_invert = 0; //DEBUG
@@ -133,11 +134,10 @@ reg[31:0]	r_packetCounter = 0; //Total number of packets sent
 reg[31:0]	r_linePacketCounter = 0; //Used to indicate where we are within a line (1280/32 = 40 packets per line)
 reg[31:0]	r_lineCounter = 0; //What line we are on
 
-/////////
 //DEBUG//
-/////////
-assign o_fifoEmpty = i_vSync;
-
+assign o_uartTx = r_state[0];
+assign o_fifoEmpty = r_state[1];
+assign o_fifoFull = r_state[2];
 
 parameter DATA_END = (44 * 1280); //44 clocks per line(40 valid and 4 blank) * 1280 lines
 parameter FRAME_END = DATA_END + 24; //Back porch of 24 clock at the end
@@ -177,6 +177,7 @@ begin
 		if(w_commDone == 1)
 		begin
 			r_commSetup <= 0;
+			r_clockCounter <= 0;
 			r_state <= s_STANDBY;
 		end
 		else	
@@ -226,7 +227,7 @@ begin
 				////////////////////////////////////
 				//This is where valid data is sent//
 				////////////////////////////////////
-				o_lcdData <= w_lcdData;
+				o_lcdData <= (r_linePacketCounter[2] == 1'b0 ? 32'hFFFFFFFF: 32'h0);
 			end	
 			else
 				//Need 4 clocks of 0 data with valid low at the end of each line
