@@ -83,12 +83,14 @@ fifo_32 FIFO_INST
 	.i_inputClock(w_fifoClock),
 	.i_inputData(w_fifoData),
 	.i_dataValid(w_fifoDataValid),
-	//.o_fullFlag(o_fifoFull), //DEBUG
+	.o_fullFlag(o_fifoFull), 
 	
 	//Output to LCD
 	.i_outputClock(o_lcdClock && o_valid),
-	.o_outputData(w_lcdData)
-	//.o_emptyFlag(o_fifoEmpty) //DEBUG
+	.o_outputData(w_lcdData),
+	.o_emptyFlag(o_fifoEmpty),
+	.o_writeAddress(w_fifoWriteAddress),
+	.o_readAddress(w_fifoReadAddress)
 );
 
 
@@ -99,7 +101,7 @@ hdmi_ingester HDMI_INGESTER_INST
 	.i_hdmiClock(i_hdmiClock),
 	.i_hSync(i_hSync),
 	.i_vSync(i_vSync), 
-	.i_hdmiEnable(o_active),
+	.i_hdmiEnable(w_hdmiEnable),
 	
 	//Fifo connections
 	.i_fifoFull(o_fifoFull),
@@ -110,11 +112,13 @@ hdmi_ingester HDMI_INGESTER_INST
 
 
 //Used to gate the clock to the HDP
+wire 		w_hdmiEnable;
+assign		w_hdmiEnable = (r_state == s_NORMAL);
 assign 		o_nReset = ((r_state != s_START) && (r_state != s_SHUTDOWN));
 assign 		o_lcdClock = (w_lcdClock && o_nReset); //Clock is only active when reset is high
 assign 		o_active = (r_state == s_NORMAL); 
-assign 		o_valid = (o_active && (r_linePacketCounter < 40));
-assign		o_update = (o_active && (r_packetCounter < 28));
+assign 		o_valid = (w_hdmiEnable && (r_linePacketCounter < 40));
+assign		o_update = (w_hdmiEnable && (r_packetCounter < 28));
 assign 		o_invert = 0; //DEBUG
 assign		o_sync = 0;
 
@@ -134,13 +138,12 @@ reg[31:0]	r_packetCounter = 0; //Total number of packets sent
 reg[31:0]	r_linePacketCounter = 0; //Used to indicate where we are within a line (1280/32 = 40 packets per line)
 reg[31:0]	r_lineCounter = 0; //What line we are on
 
-//DEBUG//
-assign o_uartTx = r_state[0];
-assign o_fifoEmpty = r_state[1];
-assign o_fifoFull = r_state[2];
-
 parameter DATA_END = (44 * 1280); //44 clocks per line(40 valid and 4 blank) * 1280 lines
 parameter FRAME_END = DATA_END + 24; //Back porch of 24 clock at the end
+
+
+//DEBUG//
+assign o_uartTx = w_hdmiEnable;
 
 always @(negedge w_lcdClock)
 begin
@@ -210,32 +213,10 @@ begin
 	
 	s_NORMAL:
 	begin
-		//Used for whole frame
-		r_packetCounter <= r_packetCounter + 1;
-		//Used for where we are in a line
-		r_linePacketCounter <= r_linePacketCounter + 1;
-		if(r_linePacketCounter == 43)
-		begin
-			r_linePacketCounter <= 0;
-			r_lineCounter <= r_lineCounter + 1;
-		end
-
-		if(r_packetCounter < DATA_END)
-		begin
-			if(r_linePacketCounter < 40)
-			begin
-				////////////////////////////////////
-				//This is where valid data is sent//
-				////////////////////////////////////
-				o_lcdData <= (r_linePacketCounter[2] == 1'b0 ? 32'hFFFFFFFF: 32'h0);
-			end	
-			else
-				//Need 4 clocks of 0 data with valid low at the end of each line
-				o_lcdData[31:0] <= 32'b0;
-		end
-		else
+		if(r_packetCounter >= DATA_END)
 		begin
 			//In the back porch
+			r_packetCounter <= r_packetCounter + 1;
 			if(r_packetCounter == (FRAME_END - 1)) //minus 1 because of zero indexing
 			begin
 				r_packetCounter <= 0;
@@ -243,7 +224,32 @@ begin
 				r_lineCounter <= 0;
 			end
 		end
-	
+		else
+		begin
+			if(o_fifoEmpty == 0)
+			begin
+				//Used for whole frame
+				r_packetCounter <= r_packetCounter + 1;
+				//Used for where we are in a line
+				r_linePacketCounter <= r_linePacketCounter + 1;
+				if(r_linePacketCounter == 43)
+				begin
+					r_linePacketCounter <= 0;
+					r_lineCounter <= r_lineCounter + 1;
+				end
+				else if(r_linePacketCounter < 40)
+				begin
+					////////////////////////////////////
+					//This is where valid data is sent//
+					////////////////////////////////////
+					o_lcdData <= w_lcdData;
+				end	
+				else
+					//Need 4 clocks of 0 data with valid low at the end of each line
+					o_lcdData[31:0] <= 32'b0;
+				
+			end
+		end
 
 		//Code for shutdown button
 		if(i_shutdown == 0)
