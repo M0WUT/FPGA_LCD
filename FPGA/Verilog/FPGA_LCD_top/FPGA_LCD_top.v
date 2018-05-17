@@ -112,8 +112,7 @@ hdmi_ingester HDMI_INGESTER_INST
 
 
 //Used to gate the clock to the HDP
-wire 		w_hdmiEnable;
-assign		w_hdmiEnable = (r_state == s_NORMAL);
+assign		w_hdmiEnable = 1; //DEBUG
 assign 		o_nReset = ((r_state != s_START) && (r_state != s_SHUTDOWN));
 assign 		o_lcdClock = (w_lcdClock && o_nReset); //Clock is only active when reset is high
 assign 		o_active = (r_state == s_NORMAL); 
@@ -137,13 +136,13 @@ reg[31:0]	r_clockCounter = 0; //Used to count clock pulses for delays
 reg[31:0]	r_packetCounter = 0; //Total number of packets sent
 reg[31:0]	r_linePacketCounter = 0; //Used to indicate where we are within a line (1280/32 = 40 packets per line)
 reg[31:0]	r_lineCounter = 0; //What line we are on
-
+reg			r_hdmiEnable = 0; //DEBUG
 parameter DATA_END = (44 * 1280); //44 clocks per line(40 valid and 4 blank) * 1280 lines
 parameter FRAME_END = DATA_END + 24; //Back porch of 24 clock at the end
 
 
 //DEBUG//
-assign o_uartTx = w_hdmiEnable;
+assign o_uartTx = 1'b1;
 
 always @(negedge w_lcdClock)
 begin
@@ -243,6 +242,7 @@ begin
 					//This is where valid data is sent//
 					////////////////////////////////////
 					o_lcdData <= w_lcdData;
+					
 				end	
 				else
 					//Need 4 clocks of 0 data with valid low at the end of each line
