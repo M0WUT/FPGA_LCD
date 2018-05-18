@@ -6,7 +6,7 @@ Dan McGraw, dpm39, University of Cambridge
 *******************************************************************************************/
 
 
-module hdmi_ingester
+module spi_ingester
 (
 	//HDMI in
 	input[23:0]			i_hdmiData,

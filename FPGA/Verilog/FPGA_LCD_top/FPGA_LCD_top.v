@@ -3,12 +3,13 @@ module FPGA_LCD_top
 	//Master clock
 	input			i_clock50,
 	
-	//HDMI Input
-	input[23:0]		i_hdmiData,
-	input 			i_hdmiClock,
+	//SPI input
 	input			i_hSync,
-	input			i_vSync,
-	
+	input 			i_mosi,
+	input			i_sck,
+	input 			i_vSync,
+		
+		
 	//HDP Output,
 	output reg[31:0]o_lcdData,
 	output			o_valid,
@@ -17,10 +18,6 @@ module FPGA_LCD_top
 	output			o_update,
 	output			o_invert,
 	output			o_lcdClock,
-	
-	//UART
-	output			o_uartTx,
-	input			i_uartRx, //Not yet implemented
 	
 	//SPI
 	output			o_sen,
@@ -31,13 +28,11 @@ module FPGA_LCD_top
 	//Debug
 	output			o_active,
 	input			i_shutdown,
-	output			o_fifoFull,
-	output			o_fifoEmpty
+	output reg[7:0]	o_debug
+
 );
 
 //Direct drive or use PLL
-wire 	w_lcdClock;
-assign	w_lcdClock = i_clock50;
 parameter CLOCK_SPEED = 50; //Clock speed in MHz
 
 
@@ -45,10 +40,7 @@ reg		r_commSetup = 0;
 reg		r_commActivate = 0;
 reg		r_commShutdown = 0;
 wire	w_commDone;
-wire[31:0]	w_fifoData;
-wire[31:0]	w_lcdData;
-wire		w_fifoClock;
-wire		w_fifoDataValid;
+
 
 comms_master #(.CLOCK_SPEED(CLOCK_SPEED)) COMMS_MASTER_INST
 (
@@ -77,47 +69,13 @@ comms_master #(.CLOCK_SPEED(CLOCK_SPEED)) COMMS_MASTER_INST
 );
 
 
-fifo_32 FIFO_INST
-(
-	//Input from HDMI Ingester
-	.i_inputClock(w_fifoClock),
-	.i_inputData(w_fifoData),
-	.i_dataValid(w_fifoDataValid),
-	.o_fullFlag(o_fifoFull), 
-	
-	//Output to LCD
-	.i_outputClock(o_lcdClock && o_valid),
-	.o_outputData(w_lcdData),
-	.o_emptyFlag(o_fifoEmpty),
-	.o_writeAddress(w_fifoWriteAddress),
-	.o_readAddress(w_fifoReadAddress)
-);
-
-
-hdmi_ingester HDMI_INGESTER_INST
-(
-	//HDMI input
-	.i_hdmiData(i_hdmiData),
-	.i_hdmiClock(i_hdmiClock),
-	.i_hSync(i_hSync),
-	.i_vSync(i_vSync), 
-	.i_hdmiEnable(w_hdmiEnable),
-	
-	//Fifo connections
-	.i_fifoFull(o_fifoFull),
-	.o_dataValid(w_fifoDataValid),
-	.o_fifoClock(w_fifoClock),
-	.o_fifoData(w_fifoData)
-);
-
-
 //Used to gate the clock to the HDP
-assign		w_hdmiEnable = 1; //DEBUG
+assign		w_active = (r_state == s_NORMAL);
 assign 		o_nReset = ((r_state != s_START) && (r_state != s_SHUTDOWN));
-assign 		o_lcdClock = (w_lcdClock && o_nReset); //Clock is only active when reset is high
-assign 		o_active = (r_state == s_NORMAL); 
-assign 		o_valid = (w_hdmiEnable && (r_linePacketCounter < 40));
-assign		o_update = (w_hdmiEnable && (r_packetCounter < 28));
+assign 		o_lcdClock = (i_clock50 && o_nReset); //Clock is only active when reset is high
+assign 		o_active = w_active;
+assign 		o_valid = (w_active && (r_linePacketCounter < 40));
+assign		o_update = (w_active && (r_packetCounter < 28));
 assign 		o_invert = 0; //DEBUG
 assign		o_sync = 0;
 
@@ -136,16 +94,67 @@ reg[31:0]	r_clockCounter = 0; //Used to count clock pulses for delays
 reg[31:0]	r_packetCounter = 0; //Total number of packets sent
 reg[31:0]	r_linePacketCounter = 0; //Used to indicate where we are within a line (1280/32 = 40 packets per line)
 reg[31:0]	r_lineCounter = 0; //What line we are on
-reg			r_hdmiEnable = 0; //DEBUG
 parameter DATA_END = (44 * 1280); //44 clocks per line(40 valid and 4 blank) * 1280 lines
 parameter FRAME_END = DATA_END + 24; //Back porch of 24 clock at the end
 
 
-//DEBUG//
-assign o_uartTx = 1'b1;
+reg[7:0]	r_spiBitCounter = 0;
+reg[7:0]	r_spiWordCounter = 0;
+reg			r_bufferNumber = 0;
+reg			r_bufferZeroReady = 0;
+reg			r_bufferOneReady = 0;
+reg[31:0] 	r_bufferZero [40:0]; //4 lines per buffer (Needed a number that nicely divides 1280)
+reg[31:0] 	r_bufferOne [40:0];
+reg[31:0]	r_temp = 0;
 
-always @(negedge w_lcdClock)
+always @(posedge i_sck)
 begin
+	o_debug[1] <= r_bufferZeroReady;
+	o_debug[2] <= r_bufferOneReady;
+
+	
+	r_bufferZeroReady <= 0;
+	r_bufferOneReady <= 0;
+	
+	r_temp[r_spiBitCounter] <= i_mosi;
+	
+	if(r_spiBitCounter == 31) //Have completed a word
+	begin
+		r_spiBitCounter <= 0;
+		if(r_bufferNumber == 0)
+			r_bufferZero[r_spiWordCounter] <= r_temp;
+		else
+			r_bufferOne[r_spiWordCounter] <= r_temp;
+			
+		if(r_spiWordCounter == 39) //40 words in a line
+		begin
+			r_spiWordCounter <= 0;
+			r_bufferNumber <= ~r_bufferNumber;
+			if(r_bufferNumber == 0)
+				r_bufferZeroReady <= 1;	
+			else
+				r_bufferOneReady <= 1;
+		end
+		else
+			r_spiWordCounter <= r_spiWordCounter + 1;
+	end
+	else
+		r_spiBitCounter <= r_spiBitCounter + 1;
+	
+	
+end
+
+always @(posedge i_hSync) o_debug[0] <= (r_spiBitCounter == 0);
+
+reg r_bufferZeroSending = 0;
+reg r_bufferOneSending = 0;
+reg	r_sendingBuffer = 0;
+
+always @(negedge i_clock50)
+begin
+	o_debug[3] <= r_sendingBuffer;
+	o_debug[4] <= r_bufferZeroSending;
+	
 	case (r_state)
 	
 	s_START:
@@ -212,7 +221,8 @@ begin
 	
 	s_NORMAL:
 	begin
-		if(r_packetCounter >= DATA_END)
+		
+		if(r_packetCounter > (DATA_END-1))
 		begin
 			//In the back porch
 			r_packetCounter <= r_packetCounter + 1;
@@ -225,31 +235,69 @@ begin
 		end
 		else
 		begin
-			if(o_fifoEmpty == 0)
+			if(r_sendingBuffer == 0) //We are sending buffer 0 /waiting for buffer 1 ready
 			begin
-				//Used for whole frame
-				r_packetCounter <= r_packetCounter + 1;
-				//Used for where we are in a line
-				r_linePacketCounter <= r_linePacketCounter + 1;
-				if(r_linePacketCounter == 43)
+				r_bufferZeroSending <= 1;
+				if(r_linePacketCounter == 44) //Have reached end of line
 				begin
-					r_linePacketCounter <= 0;
-					r_lineCounter <= r_lineCounter + 1;
+					r_bufferZeroSending <= 0;
+					if(r_bufferOneReady == 1) //Wait for buffer 1 to be ready
+					begin
+						r_lineCounter <= r_lineCounter + 1;
+						r_sendingBuffer <= 1;
+						r_linePacketCounter <= 0;
+					end
 				end
-				else if(r_linePacketCounter < 40)
-				begin
-					////////////////////////////////////
-					//This is where valid data is sent//
-					////////////////////////////////////
-					o_lcdData <= w_lcdData;
-					
-				end	
 				else
-					//Need 4 clocks of 0 data with valid low at the end of each line
-					o_lcdData[31:0] <= 32'b0;
-				
+				begin
+					if(r_linePacketCounter > 39) //4 pulses with 'Valid' Low
+					begin
+						o_lcdData <= 32'h0;
+						r_linePacketCounter <= r_linePacketCounter + 1;
+						r_packetCounter <= r_packetCounter + 1;
+					end
+					else //Sending image data
+					begin
+						o_lcdData <= r_bufferZero[r_linePacketCounter];
+						r_linePacketCounter <= r_linePacketCounter + 1;
+						r_packetCounter <= r_packetCounter + 1;
+					end
+				end
 			end
+			else //Sending from Buffer 1
+			begin
+				r_bufferOneSending <= 1;
+				if(r_linePacketCounter == 44) //Have reached end of line
+				begin
+					r_bufferOneSending <= 0;
+					if(r_bufferZeroReady == 1) //Wait for buffer 1 to be ready
+					begin
+						r_lineCounter <= r_lineCounter + 1;
+						r_sendingBuffer <= 0;
+						r_linePacketCounter <= 0;
+					end
+				end
+				else 
+				begin
+					if(r_linePacketCounter > 39) //4 pulses with 'Valid' Low
+					begin
+						o_lcdData <= 32'h0;
+						r_linePacketCounter <= r_linePacketCounter + 1;
+						r_packetCounter <= r_packetCounter + 1;
+					end
+					else //Sending image data
+					begin
+						o_lcdData <= r_bufferOne[r_linePacketCounter];
+						r_linePacketCounter <= r_linePacketCounter + 1;
+						r_packetCounter <= r_packetCounter + 1;
+					end
+				end
+			
+			end
+			
+			
 		end
+		
 
 		//Code for shutdown button
 		if(i_shutdown == 0)
@@ -277,11 +325,11 @@ begin
 			r_state <= s_SHUTDOWN;
 		else
 			r_clockCounter <= r_clockCounter + 1;
-	end
+	end //case s_SLEEP
 	
 	s_SHUTDOWN:
 	begin
-	end
+	end // case s_SHUTDOWN
 	
 	endcase
 	
