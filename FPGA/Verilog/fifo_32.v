@@ -26,10 +26,10 @@ module fifo_32
 );	
 
 //Address pointers
-reg[7:0] r_readAddress = 0;
-reg[7:0] r_writeAddress = 0;
+reg[10:0] r_readAddress = 0;
+reg[10:0] r_writeAddress = 0;
 
-reg[31:0] FIFO [255:0];
+reg[31:0] FIFO [2047:0];
 
 assign o_emptyFlag = (r_readAddress == r_writeAddress); //We have no data if the current location to be written is the current to be read
 assign o_fullFlag = (r_readAddress == r_writeAddress + 8'b1); //Full if we have looped around the entire buffer and are about to overwrite unread data
