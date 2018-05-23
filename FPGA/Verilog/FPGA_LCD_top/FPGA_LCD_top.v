@@ -28,7 +28,7 @@ module FPGA_LCD_top
 	//Debug
 	output			o_active,
 	input			i_shutdown,
-	output reg[7:0]	o_debug
+	output[7:0]		o_debug
 
 );
 
@@ -103,16 +103,24 @@ reg[7:0]	r_spiWordCounter = 0;
 reg			r_bufferNumber = 0;
 reg			r_bufferZeroReady = 0;
 reg			r_bufferOneReady = 0;
-reg[31:0] 	r_bufferZero [40:0]; //4 lines per buffer (Needed a number that nicely divides 1280)
-reg[31:0] 	r_bufferOne [40:0];
+reg[31:0] 	r_bufferZero [39:0]; //4 lines per buffer (Needed a number that nicely divides 1280)
+reg[31:0] 	r_bufferOne [39:0];
 reg[31:0]	r_temp = 0;
+
+wire		w_bufferZeroReady;
+wire		w_bufferOneReady;
+assign w_bufferZeroReady = r_bufferZeroReady;
+assign w_bufferOneReady = r_bufferOneReady;
+
+assign o_debug[1] = w_bufferZeroReady;
+assign o_debug[2] = w_bufferOneReady;
+
 
 always @(posedge i_sck)
 begin
-	o_debug[1] <= r_bufferZeroReady;
-	o_debug[2] <= r_bufferOneReady;
 
 	
+
 	r_bufferZeroReady <= 0;
 	r_bufferOneReady <= 0;
 	
@@ -120,6 +128,7 @@ begin
 	
 	if(r_spiBitCounter == 31) //Have completed a word
 	begin
+		r_spiWordCounter <= r_spiWordCounter + 1;
 		r_spiBitCounter <= 0;
 		if(r_bufferNumber == 0)
 			r_bufferZero[r_spiWordCounter] <= r_temp;
@@ -129,14 +138,12 @@ begin
 		if(r_spiWordCounter == 39) //40 words in a line
 		begin
 			r_spiWordCounter <= 0;
-			r_bufferNumber <= ~r_bufferNumber;
+			r_bufferNumber <= !r_bufferNumber;
 			if(r_bufferNumber == 0)
 				r_bufferZeroReady <= 1;	
 			else
 				r_bufferOneReady <= 1;
 		end
-		else
-			r_spiWordCounter <= r_spiWordCounter + 1;
 	end
 	else
 		r_spiBitCounter <= r_spiBitCounter + 1;
@@ -144,16 +151,18 @@ begin
 	
 end
 
-always @(posedge i_hSync) o_debug[0] <= (r_spiBitCounter == 0);
+//always @(posedge i_hSync) o_debug[0] <= (r_spiBitCounter == 0);
 
-reg r_bufferZeroSending = 0;
-reg r_bufferOneSending = 0;
-reg	r_sendingBuffer = 0;
+reg			r_sendingBuffer = 0;
+reg[1:0]	r_sendingState = 0;
+
+assign o_debug[4] = (r_sendingState == 0);
+assign o_debug[5] = (r_sendingState == 1);
+	
 
 always @(negedge i_clock50)
 begin
-	o_debug[3] <= r_sendingBuffer;
-	o_debug[4] <= r_bufferZeroSending;
+	//o_debug[3] <= r_bufferNumber;
 	
 	case (r_state)
 	
@@ -235,22 +244,12 @@ begin
 		end
 		else
 		begin
-			if(r_sendingBuffer == 0) //We are sending buffer 0 /waiting for buffer 1 ready
-			begin
-				r_bufferZeroSending <= 1;
-				if(r_linePacketCounter == 44) //Have reached end of line
+			case(r_sendingState)
+				0:
 				begin
-					r_bufferZeroSending <= 0;
-					if(r_bufferOneReady == 1) //Wait for buffer 1 to be ready
-					begin
-						r_lineCounter <= r_lineCounter + 1;
-						r_sendingBuffer <= 1;
-						r_linePacketCounter <= 0;
-					end
-				end
-				else
-				begin
-					if(r_linePacketCounter > 39) //4 pulses with 'Valid' Low
+					if(r_linePacketCounter == 44) //Have reached end of line
+						r_sendingState <= 3;
+					else if(r_linePacketCounter > 39) //4 pulses with 'Valid' Low
 					begin
 						o_lcdData <= 32'h0;
 						r_linePacketCounter <= r_linePacketCounter + 1;
@@ -263,23 +262,11 @@ begin
 						r_packetCounter <= r_packetCounter + 1;
 					end
 				end
-			end
-			else //Sending from Buffer 1
-			begin
-				r_bufferOneSending <= 1;
-				if(r_linePacketCounter == 44) //Have reached end of line
+				1:
 				begin
-					r_bufferOneSending <= 0;
-					if(r_bufferZeroReady == 1) //Wait for buffer 1 to be ready
-					begin
-						r_lineCounter <= r_lineCounter + 1;
-						r_sendingBuffer <= 0;
-						r_linePacketCounter <= 0;
-					end
-				end
-				else 
-				begin
-					if(r_linePacketCounter > 39) //4 pulses with 'Valid' Low
+					if(r_linePacketCounter == 44) //Have reached end of line
+						r_sendingState <= 2;
+					else if(r_linePacketCounter > 39) //4 pulses with 'Valid' Low
 					begin
 						o_lcdData <= 32'h0;
 						r_linePacketCounter <= r_linePacketCounter + 1;
@@ -291,20 +278,45 @@ begin
 						r_linePacketCounter <= r_linePacketCounter + 1;
 						r_packetCounter <= r_packetCounter + 1;
 					end
+				
 				end
-			
-			end
-			
-			
+				
+				2:
+				begin
+					if(w_bufferZeroReady == 1)
+					begin
+						r_lineCounter <= r_lineCounter + 1;
+						r_linePacketCounter <= 0;
+						r_sendingState <= 0;
+					end
+					else
+						r_sendingState <= 2;
+				end
+				
+				3:
+				begin
+					if(w_bufferOneReady == 1)
+					begin
+						r_lineCounter <= r_lineCounter + 1;
+						r_linePacketCounter <= 0;
+						r_sendingState <= 1;
+					end
+					else
+						r_sendingState <= 3;
+				
+				end
+			endcase
+				
 		end
 		
-
+		/*
 		//Code for shutdown button
 		if(i_shutdown == 0)
 		begin
 			r_commShutdown <= 1;
 			r_state <= s_TRANSISTION_NORMAL_SLEEP;
 		end
+		*/
 	end //case s_NORMAL
 	
 	s_TRANSISTION_NORMAL_SLEEP:
