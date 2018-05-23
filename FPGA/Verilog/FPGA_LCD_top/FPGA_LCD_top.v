@@ -109,8 +109,10 @@ reg[31:0]	r_temp = 0;
 
 wire		w_bufferZeroReady;
 wire		w_bufferOneReady;
+wire		w_bufferNumber;
 assign w_bufferZeroReady = r_bufferZeroReady;
 assign w_bufferOneReady = r_bufferOneReady;
+assign w_bufferNumber = r_bufferNumber;
 
 assign o_debug[1] = w_bufferZeroReady;
 assign o_debug[2] = w_bufferOneReady;
@@ -230,7 +232,6 @@ begin
 	
 	s_NORMAL:
 	begin
-		
 		if(r_packetCounter > (DATA_END-1))
 		begin
 			//In the back porch
@@ -245,65 +246,53 @@ begin
 		else
 		begin
 			case(r_sendingState)
-				0:
+				0: //Sending Buffer 0
+				begin
+					if(r_linePacketCounter == 44) //Have reached end of line
+						r_sendingState <= 2;
+					else 
+					begin
+						o_lcdData <= ((r_linePacketCounter < 40) ? r_bufferZero[r_linePacketCounter] : 32'h0);
+						r_linePacketCounter <= r_linePacketCounter + 1;
+						r_packetCounter <= r_packetCounter + 1;
+					end
+				end
+				
+				1: //Sending Buffer 1
 				begin
 					if(r_linePacketCounter == 44) //Have reached end of line
 						r_sendingState <= 3;
-					else if(r_linePacketCounter > 39) //4 pulses with 'Valid' Low
+					else 
 					begin
-						o_lcdData <= 32'h0;
-						r_linePacketCounter <= r_linePacketCounter + 1;
-						r_packetCounter <= r_packetCounter + 1;
-					end
-					else //Sending image data
-					begin
-						o_lcdData <= r_bufferZero[r_linePacketCounter];
-						r_linePacketCounter <= r_linePacketCounter + 1;
-						r_packetCounter <= r_packetCounter + 1;
-					end
-				end
-				1:
-				begin
-					if(r_linePacketCounter == 44) //Have reached end of line
-						r_sendingState <= 2;
-					else if(r_linePacketCounter > 39) //4 pulses with 'Valid' Low
-					begin
-						o_lcdData <= 32'h0;
-						r_linePacketCounter <= r_linePacketCounter + 1;
-						r_packetCounter <= r_packetCounter + 1;
-					end
-					else //Sending image data
-					begin
-						o_lcdData <= r_bufferOne[r_linePacketCounter];
+						o_lcdData <= ((r_linePacketCounter < 40) ? r_bufferOne[r_linePacketCounter] : 32'h0);
 						r_linePacketCounter <= r_linePacketCounter + 1;
 						r_packetCounter <= r_packetCounter + 1;
 					end
 				
 				end
 				
-				2:
+				2: //Buffer 0 has been sent, waiting for buffer 1
 				begin
-					if(w_bufferZeroReady == 1)
-					begin
-						r_lineCounter <= r_lineCounter + 1;
-						r_linePacketCounter <= 0;
-						r_sendingState <= 0;
-					end
-					else
-						r_sendingState <= 2;
-				end
-				
-				3:
-				begin
-					if(w_bufferOneReady == 1)
+					if(w_bufferNumber == 0) //If writing to 0, 1 must be ready
 					begin
 						r_lineCounter <= r_lineCounter + 1;
 						r_linePacketCounter <= 0;
 						r_sendingState <= 1;
 					end
 					else
-						r_sendingState <= 3;
+						r_sendingState <= 2;
+				end
 				
+				3: //Buffer 1 has been sent, waiting for buffer 0
+				begin
+					if(w_bufferNumber == 1) //If writing to 1, 0 must be ready
+					begin
+						r_lineCounter <= r_lineCounter + 1;
+						r_linePacketCounter <= 0;
+						r_sendingState <= 0;
+					end
+					else
+						r_sendingState <= 3;
 				end
 			endcase
 				
