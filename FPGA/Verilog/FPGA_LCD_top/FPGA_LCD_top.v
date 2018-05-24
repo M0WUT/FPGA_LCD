@@ -158,6 +158,7 @@ end
 reg			r_sendingBuffer = 0;
 reg[1:0]	r_sendingState = 0;
 
+assign o_debug[3] = w_bufferNumber;
 assign o_debug[4] = (r_sendingState == 0);
 assign o_debug[5] = (r_sendingState == 1);
 	
@@ -245,6 +246,13 @@ begin
 		end
 		else
 		begin
+			//This is where video data is sent. To generate the correct control signals, r_linePacketCounter must
+			//be incremented every clock cycle and reset at the end of a line (44). r_packetCounter must be incremented for every
+			//compulsory clock cycle (40 image and 4 blank per line) and is used for end of frame signalling,
+			//r_lineCounter has no effect, purely left over from using Verilog to generate images
+			//This bit doesn't quite work properly as it doesn't send roughly 8% of the completed buffers
+			//If the SPI ingenester is replaced with code to generate images on FPGA, this has been fully tested and works.
+			
 			case(r_sendingState)
 				0: //Sending Buffer 0
 				begin
@@ -273,7 +281,7 @@ begin
 				
 				2: //Buffer 0 has been sent, waiting for buffer 1
 				begin
-					if(w_bufferNumber == 0) //If writing to 0, 1 must be ready
+					if((i_hSync == 0) && (w_bufferNumber == 0)) //If writing to 0, 1 must be ready
 					begin
 						r_lineCounter <= r_lineCounter + 1;
 						r_linePacketCounter <= 0;
@@ -285,7 +293,7 @@ begin
 				
 				3: //Buffer 1 has been sent, waiting for buffer 0
 				begin
-					if(w_bufferNumber == 1) //If writing to 1, 0 must be ready
+					if((i_hSync == 0) && (w_bufferNumber == 1)) //If writing to 1, 0 must be ready
 					begin
 						r_lineCounter <= r_lineCounter + 1;
 						r_linePacketCounter <= 0;
@@ -298,14 +306,14 @@ begin
 				
 		end
 		
-		/*
+		
 		//Code for shutdown button
 		if(i_shutdown == 0)
 		begin
 			r_commShutdown <= 1;
 			r_state <= s_TRANSISTION_NORMAL_SLEEP;
 		end
-		*/
+		
 	end //case s_NORMAL
 	
 	s_TRANSISTION_NORMAL_SLEEP:

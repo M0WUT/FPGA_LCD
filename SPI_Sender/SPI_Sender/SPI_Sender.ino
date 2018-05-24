@@ -9,7 +9,7 @@
 void SPI_write(uint8_t *data, int dataSize)
 {
 
-  SPI.beginTransaction(SPISettings(1000000 * CLOCK_SPEED, MSBFIRST, SPI_MODE0));
+  SPI.beginTransaction(SPISettings(30000000 * CLOCK_SPEED, MSBFIRST, SPI_MODE0));
   
   for(int i = 0; i<(dataSize - 1); i++)
     SPI.transfer(data[i], SPI_CONTINUE);
