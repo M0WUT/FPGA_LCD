@@ -32,10 +32,10 @@ reg[10:0] r_writeAddress = 0;
 reg[31:0] FIFO [2047:0];
 
 assign o_emptyFlag = (r_readAddress == r_writeAddress); //We have no data if the current location to be written is the current to be read
-assign o_fullFlag = (r_readAddress == (r_writeAddress + 8'b1)); //Full if we have looped around the entire buffer and are about to overwrite unread data
-assign o_writeAddress = r_writeAddress; //Convert registers to outputs
+assign o_fullFlag = (r_readAddress == r_writeAddress + 8'b1); //Full if we have looped around the entire buffer and are about to overwrite unread data
+assign o_writeAddress = r_writeAddress;
 assign o_readAddress = r_readAddress;
-assign o_outputData = FIFO[r_readAddress]; //Output data is set by contents of FIFO at readAddress
+assign o_outputData = FIFO[r_readAddress];
 
 always @(posedge i_inputClock)
 begin
@@ -46,7 +46,7 @@ begin
 	end
 end
 
-always @(posedge i_outputClock) 
+always @(posedge i_outputClock) //Want to grab data on negedge so setup for LCD write on posedge
 begin
 	if(!o_emptyFlag)
 	begin
