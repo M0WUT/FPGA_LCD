@@ -18,33 +18,14 @@
 set_io i_clock50 128
 
 ###HDMI Input
-set_io i_hdmiData[0] 107 
-set_io i_hdmiData[1] 106
-set_io i_hdmiData[2] 105
-set_io i_hdmiData[3] 104
-set_io i_hdmiData[4] 102
-set_io i_hdmiData[5] 101
-set_io i_hdmiData[6] 99
-set_io i_hdmiData[7] 98
-set_io i_hdmiData[8] 97
-set_io i_hdmiData[9] 96
-set_io i_hdmiData[10] 95
-set_io i_hdmiData[11] 91
-set_io i_hdmiData[12] 90
-set_io i_hdmiData[13] 88
-set_io i_hdmiData[14] 87
-set_io i_hdmiData[15] 85
-set_io i_hdmiData[16] 84
-set_io i_hdmiData[17] 83
-set_io i_hdmiData[18] 82
-set_io i_hdmiData[19] 81
-set_io i_hdmiData[20] 80
-set_io i_hdmiData[21] 79
-set_io i_hdmiData[22] 78
-set_io i_hdmiData[23] 76
-set_io i_hdmiClock 75
-set_io i_hSync 73
-set_io i_vSync 74
+set_io i_hSync 107 
+set_io i_mosi 106
+set_io i_sck 105
+set_io i_vSync 104
+set_io o_debug[0] 102
+set_io o_debug[1] 101
+set_io o_debug[2] 99
+
 
 ###HDP Output
 set_io o_lcdData[0] 139
@@ -83,12 +64,12 @@ set_io o_valid 39
 set_io o_sync 41
 set_io o_update 42
 set_io o_invert 38
-###set_io o_nReset 130
+###set_io o_nReset 130 ###This is the correct pin for the v2 PCB, v1 PCBs use the UART RX line as easier to bodge wire to!
 set_io o_nReset 116
 set_io o_lcdClock 37
 
 ###UART
-set_io o_uartTx 115
+set_io o_debug[3] 115 ###UART TX Pin
 ###set_io i_uartRx 116 ###Used for reset pin as forgot trace on v1 PCB
 
 ###SPI
@@ -100,8 +81,8 @@ set_io i_sout 137
 ###Debug
 set_io o_active 112
 set_io i_shutdown 110
-set_io o_fifoFull 113
-set_io o_fifoEmpty 114
+set_io o_debug[5] 113 ###FIFO Full Pin
+set_io o_debug[4] 114 ###FIFO Empty Pin
 
 
 

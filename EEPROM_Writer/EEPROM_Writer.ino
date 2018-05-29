@@ -79,6 +79,7 @@ void loop()
 	
 	digitalWrite(4, HIGH);
 	digitalWrite(2, LOW);
+  while(1);
 
 }
 
